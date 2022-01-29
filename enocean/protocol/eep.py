@@ -101,7 +101,7 @@ class EEP(object):
             source['shortcut']: {
                 'description': source.get('description'),
                 'unit': source.get('unit', ''),
-                'value': value_desc['description'].format(value=raw_value),
+                'value': value_desc['description'].format(value=raw_value) if value_desc['description'] else '',
                 'raw_value': raw_value,
             }
         }
