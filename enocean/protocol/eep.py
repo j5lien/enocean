@@ -52,7 +52,7 @@ class EEP(object):
         ''' Get raw data as integer, based on offset and size '''
         offset = int(source['offset'])
         size = int(source['size'])
-        return int(''.join(['1' if digit else '0' for digit in bitarray[offset:offset + size]]), 2)
+        return int(''.join(['1' if digit else '0' for digit in bitarray[offset:min(len(bitarray), offset + size)]]), 2)
 
     @staticmethod
     def _set_raw(target, raw_value, bitarray):
