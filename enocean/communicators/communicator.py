@@ -70,7 +70,7 @@ class Communicator(threading.Thread):
             if status == PARSE_RESULT.OK and packet:
                 packet.received = datetime.datetime.now()
 
-                if isinstance(packet, UTETeachInPacket) and self.teach_in:
+                if isinstance(packet, UTETeachInPacket) and self.base_id != packet.sender and self.teach_in:
                     response_packet = packet.create_response_packet(self.base_id)
                     self.logger.info('Sending response to UTE teach-in.')
                     self.send(response_packet)
