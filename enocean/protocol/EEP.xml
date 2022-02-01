@@ -1787,6 +1787,96 @@
           </enum>
         </data>
       </profile>
+			<profile type="0x30" description="Smoke Alarm Humidity Temperature Confort Air">
+				<data>
+					<enum description="Smoke Alarm status" shortcut="SMAS" offset="0" size="1">
+						<item description="Smoke Alarm non-activated" value="0" />
+						<item description="Smoke Alarm activated" value="1" />
+					</enum>
+					<enum description="Sensor fault mode status" shortcut="SFMD" offset="1" size="1">
+						<item description="Sensor Fault mode non-activated" value="0" />
+						<item description="Sensor Fault mode activated" value="1" />
+					</enum>
+					<enum description="Smoke Alarm Condition analysis: Maintenance" shortcut="SMACAM" offset="2" size="1">
+						<item description="Maintenance OK" value="0" />
+						<item description="Maintenance not done" value="1" />
+					</enum>
+					<enum description="Smoke Alarm Condition analysis: Humidity" shortcut="SMACAH" offset="3" size="1">
+						<item description="Humidity range OK" value="0" />
+						<item description="Humidity range NOK" value="1" />
+					</enum>
+					<enum description="Smoke Alarm Condition analysis: Temperature" shortcut="SMACAT" offset="4" size="1">
+						<item description="Temperature range OK" value="0" />
+						<item description="Temperature range NOK" value="1" />
+					</enum>
+					<value description="Time since last maintenance" shortcut="TSLM" offset="5" size="8" unit="week">
+						<range>
+							<min>0</min>
+							<max>250</max>
+						</range>
+						<scale>
+							<min>0</min>
+							<max>250</max>
+						</scale>
+						<item description="Error" value="255" />
+					</value>
+					<enum description="Energy Storage" shortcut="ES" offset="13" size="2">
+						<item description="High" value="0" />
+						<item description="Medium" value="1" />
+						<item description="Low" value="2" />
+						<item description="Critical" value="3" />
+					</enum>
+					<value description="Remaining product life time" shortcut="RPLT" offset="15" size="8" unit="month">
+						<range>
+							<min>0</min>
+							<max>120</max>
+						</range>
+						<scale>
+							<min>0</min>
+							<max>120</max>
+						</scale>
+						<item description="Error" value="255" />
+					</value>
+					<value description="Temperature (linear)" shortcut="TMP8" offset="23" size="8" unit="°C">
+						<range>
+							<min>0</min>
+							<max>250</max>
+						</range>
+						<scale>
+							<min>0.000000</min>
+							<max>50.000000</max>
+						</scale>
+						<item description="Error" value="255" />
+					</value>
+					<value description="Humidity (linear)" shortcut="HUM" offset="31" size="8" unit="%">
+						<range>
+							<min>0</min>
+							<max>200</max>
+						</range>
+						<scale>
+							<min>0.000000</min>
+							<max>100.000000</max>
+						</scale>
+						<item description="Error" value="255" />
+					</value>
+					<enum description="Hygrothermal Confort" shortcut="HCI" offset="39" size="2">
+						<item description="Good" value="0" />
+						<item description="Medium" value="1" />
+						<item description="Bad" value="2" />
+						<item description="Error" value="3" />
+					</enum>
+					<enum description="T/Hum. Indoor Air Analysis" shortcut="IAQTH" offset="41" size="3">
+						<item description="Optimal air range" value="0" />
+						<item description="Dry Air range" value="1" />
+						<item description="High humidity range" value="2" />
+						<item description="High temperature and humidity range" value="3" />
+						<item description="Temperature or Humidity out of analysis range" value="4" />
+						<item description="Reserved" value="5" />
+						<item description="Reserved" value="6" />
+						<item description="Error" value="7" />
+					</enum>
+				</data>
+			</profile>
     </profiles>
   </telegram>
 </telegrams>
