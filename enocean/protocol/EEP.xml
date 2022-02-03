@@ -739,6 +739,44 @@
       </profile>
     </profiles>
     <profiles func="0x09" description="Gas Sensor">
+      <profile type="0x0c" description="VOC sensorNG">
+        <data>
+          <value description="VOC" shortcut="CONC" offset="0" size="16" unit="ug/m3">
+            <range>
+              <min>0</min>
+              <max>65535</max>
+            </range>
+            <scale>
+              <min>0.000000</min>
+              <max>65535.000000</max>
+            </scale>
+          </value>
+          <value description="VOCID" shortcut="VOCID" offset="16" size="8" unit="v">
+            <range>
+              <min>0</min>
+              <max>255</max>
+            </range>
+            <scale>
+              <min>0.000000</min>
+              <max>255.000000</max>
+            </scale>
+          </value>
+          <enum shortcut="LRNB" description="Learn Bit" offset="28" size="1">
+            <item description="Teach-In" value="0" />
+            <item description="Data" value="1" />
+          </enum>
+          <enum shortcut="Unit" description="Unit" offset="29" size="1">
+            <item description="ppb" value="0" />
+            <item description="ug/m3" value="1" />
+          </enum>
+          <enum description="Scale Multiplier" shortcut="SCM" offset="30" size="2">
+            <item description="0.01" value="0" />
+            <item description="0.1" value="1" />
+            <item description="1" value="2" />
+            <item description="10" value="3" />
+          </enum>
+        </data>
+      </profile>
       <profile description="CO2 Sensor" type="0x04">
         <data>
           <value shortcut="HUM" description="Rel. Humidity (linear)" offset="0" size="8" unit="%">
@@ -813,6 +851,74 @@
             <item description="2-Methylpropanol" value="25" />
             <item description="Diethyl ether" value="26" />
             <item description="ozone" value="255" />
+          </enum>
+        </data>
+      </profile>
+      <profile type="0x06" description="Radon">
+        <data>
+          <value description="Radon" shortcut="ACT" offset="0" size="10" unit="bq/m3">
+            <range>
+              <min>0</min>
+              <max>1023</max>
+            </range>
+            <scale>
+              <min>0.000000</min>
+              <max>1023.000000</max>
+            </scale>
+          </value>
+          <enum shortcut="LRNB" description="Learn Bit" offset="28" size="1">
+            <item description="Teach-In" value="0" />
+            <item description="Data" value="1" />
+          </enum>
+        </data>
+      </profile>
+      <profile type="0x07" description="Particles">
+        <data>
+          <value description="Particles_10" shortcut="PM10" offset="0" size="9" unit="ug/m3">
+            <range>
+              <min>0</min>
+              <max>511</max>
+            </range>
+            <scale>
+              <min>0.000000</min>
+              <max>511.000000</max>
+            </scale>
+          </value>
+          <value description="Particles_2.5" shortcut="PM2.5" offset="9" size="9" unit="ug/m3">
+            <range>
+              <min>0</min>
+              <max>511</max>
+            </range>
+            <scale>
+              <min>0.000000</min>
+              <max>511.000000</max>
+            </scale>
+          </value>
+          <value description="Particles_1" shortcut="PM1" offset="18" size="9" unit="ug/m3">
+            <range>
+              <min>0</min>
+              <max>511</max>
+            </range>
+            <scale>
+              <min>0.000000</min>
+              <max>511.000000</max>
+            </scale>
+          </value>
+          <enum shortcut="LRNB" description="Learn Bit" offset="28" size="1">
+            <item description="Teach-In" value="0" />
+            <item description="Data" value="1" />
+          </enum>
+          <enum description="PM10 Active" shortcut="PM10a" offset="29" size="1">
+            <item description="PM10 not active" value="0" />
+            <item description="PM10 active" value="1" />
+          </enum>
+          <enum description="PM2.5 Active" shortcut="PM2.5a" offset="30" size="1">
+            <item description="PM2.5 not active" value="0" />
+            <item description="PM2.5 active" value="1" />
+          </enum>
+          <enum description="PM1 Active" shortcut="PM1a" offset="31" size="1">
+            <item description="PM1 not active" value="0" />
+            <item description="PM1 active" value="1" />
           </enum>
         </data>
       </profile>
