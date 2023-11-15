@@ -36,7 +36,13 @@ class SerialCommunicator(Communicator):
             except serial.SerialException:
                 self.logger.error('Serial port exception! (device disconnected or multiple access on port?)')
                 self.stop()
-            self.parse()
+
+            try:
+                self.parse()
+            except Exception:
+                self.logger.error('Parse exception')
+                self.stop()
+
             time.sleep(0)
 
         self.__ser.close()
