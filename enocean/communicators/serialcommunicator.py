@@ -41,7 +41,6 @@ class SerialCommunicator(Communicator):
                 self.parse()
             except Exception:
                 self.logger.error('Parse exception')
-                self.stop()
 
             time.sleep(0)
 
