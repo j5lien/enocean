@@ -115,7 +115,12 @@ class Packet(object):
 
         # Valid buffer starts from 0x55
         # Convert to list, as index -method isn't defined for bytearray
-        buf = [ord(x) if not isinstance(x, int) else x for x in buf[list(buf).index(0x55):]]
+        try:
+            buf = [ord(x) if not isinstance(x, int) else x for x in buf[list(buf).index(0x55):]]
+        except Exception as e:
+            Packet.logger.error(f'Error converting buffer to list: {e}')
+            return PARSE_RESULT.INCOMPLETE, buf, None
+
         try:
             data_len = (buf[1] << 8) | buf[2]
             opt_len = buf[3]
@@ -149,18 +154,22 @@ class Packet(object):
             return PARSE_RESULT.CRC_MISMATCH, buf, None
 
         # If we got this far, everything went ok (?)
-        if packet_type == PACKET.RADIO_ERP1:
-            # Need to handle UTE Teach-in here, as it's a separate packet type...
-            if data[0] == RORG.UTE:
-                packet = UTETeachInPacket(packet_type, data, opt_data)
+        try:
+            if packet_type == PACKET.RADIO_ERP1:
+                # Need to handle UTE Teach-in here, as it's a separate packet type...
+                if data[0] == RORG.UTE:
+                    packet = UTETeachInPacket(packet_type, data, opt_data)
+                else:
+                    packet = RadioPacket(packet_type, data, opt_data)
+            elif packet_type == PACKET.RESPONSE:
+                packet = ResponsePacket(packet_type, data, opt_data)
+            elif packet_type == PACKET.EVENT:
+                packet = EventPacket(packet_type, data, opt_data)
             else:
-                packet = RadioPacket(packet_type, data, opt_data)
-        elif packet_type == PACKET.RESPONSE:
-            packet = ResponsePacket(packet_type, data, opt_data)
-        elif packet_type == PACKET.EVENT:
-            packet = EventPacket(packet_type, data, opt_data)
-        else:
-            packet = Packet(packet_type, data, opt_data)
+                packet = Packet(packet_type, data, opt_data)
+        except Exception as e:
+            Packet.logger.error(f'Error creating packet: {e}')
+            return PARSE_RESULT.CRC_MISMATCH, buf, None
 
         return PARSE_RESULT.OK, buf, packet
 
