@@ -55,21 +55,26 @@ l'EEP Viewer : https://tools.enocean-alliance.org/EEPViewer/profiles/eep268.xml.
 est téléchargé à la génération, **pas versionné** (aucune licence explicite : seul le dérivé est publié, comme
 aujourd'hui) ; on **s'aligne sur les noms officiels** des champs (version 2.0).
 
-- [ ] Script de génération (`make eep`) : télécharge le XML officiel (UTF-16) dans un cache ignoré par git, vérifie son
+- [x] Script de génération (`make eep`) : télécharge le XML officiel (UTF-16) dans un cache ignoré par git, vérifie son
       empreinte SHA-256, et le convertit vers notre format : résolution des `<ref>` (ex. D2-01-12 renvoie à la table
       commune D2-01), `<case>`/`<condition>` → variantes par commande ou direction, champs réservés ignorés, enums
       (`item`, plages), valeurs (plage, échelle, unité), `statusfield` → `status`
-- [ ] Fichier de compléments dans notre format, fusionné à la génération : profils absents de la 2.6.8 (D2-14-41) et
-      éventuels errata. Voir si les XML individuels de l'EEP Viewer (`profiles/<RORG>/<FUNC>/<TYPE>/...xml`) couvrent
-      les profils publiés depuis
-- [ ] `EEP.xml` devient un fichier généré (en-tête « ne pas modifier », version de la spec source) ; documenter la
+- [x] Fichier de compléments dans notre format, fusionné à la génération : profils absents de la 2.6.8 (D2-14-41) et
+      éventuels errata (D2-14-30, D2-14-41, F6-10-00, F6-10-01)
+- [ ] Profils publiés après la 2.6.8 : voir si les XML individuels de l'EEP Viewer
+      (`profiles/<RORG>/<FUNC>/<TYPE>/...xml`) peuvent compléter la génération
+- [x] `EEP.xml` devient un fichier généré (en-tête « ne pas modifier », version de la spec source) ; documenter la
       procédure de mise à jour dans CLAUDE.md
-- [ ] Noms officiels : lister dans le CHANGELOG et le guide de migration les raccourcis et descriptions qui changent
+- [x] Noms officiels : lister dans le CHANGELOG et le guide de migration les raccourcis et descriptions qui changent
       pour les 65 profils actuels (ex. `ACT` → `Act`, `RBO` → `RB0`), à partir du diff du snapshot
-- [ ] Vérifier les écarts relevés entre notre XML et la spec : F6-10-00 (`WIN` en bits 2..3 chez nous, 0..7 dans la
+- [x] Vérifier les écarts relevés entre notre XML et la spec : F6-10-00 (`WIN` en bits 2..3 chez nous, 0..7 dans la
       spec), D2-14-30 (sous-champs de `SMA`), F6-02-04
-- [ ] Tests structurels, aller-retour et `SUPPORTED_PROFILES.md` étendus aux ~270 profils ; revalider les trames
-      réelles et les tests matériels
+- [x] Tests structurels, aller-retour et `SUPPORTED_PROFILES.md` étendus aux 270 profils ; trames réelles et tests
+      matériels revalidés
+- [ ] Limites du format relevées par le générateur, à traiter si un appareil en a besoin : valeurs réparties sur deux
+      champs (MSB/LSB) ou signées, décodées en brut ; valeurs d'enum masquées ; variantes indiscernables (D2-30, D2-31)
+- [ ] Chargement de `EEP.xml` plus lent (16 ms au lieu de 1 ms, 1,5 Mo) : le charger à la première utilisation plutôt
+      qu'à l'import
 
 ## 4. Documentation de l'API
 
