@@ -14,6 +14,7 @@ Dev environment is managed with [uv](https://docs.astral.sh/uv/) (`pyproject.tom
 `.python-version`). A `Makefile` wraps the common tasks:
 ```bash
 make install       # uv sync: creates .venv with the package (editable) + dev deps
+make hooks         # install pre-commit hooks (ruff, mypy, uv.lock, SUPPORTED_PROFILES.md)
 make test          # uv run pytest
 make test-linux    # same, in a Linux Docker container (PY=3.10 to pick the version)
 make test-timing   # WITH_TIMINGS=1, enables @timing-decorated rounds/limits

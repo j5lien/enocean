@@ -81,6 +81,7 @@ The development environment uses [uv](https://docs.astral.sh/uv/):
 
 ```bash
 make install      # create .venv with the package and dev tools
+make hooks        # install the pre-commit hooks (ruff, mypy, uv.lock, SUPPORTED_PROFILES.md)
 make test         # run the tests (no hardware needed: a pseudo-terminal stands in for the module)
 make test-linux   # same, in a Linux Docker container (PY=3.10 to pick the Python version)
 make cov          # tests with coverage
