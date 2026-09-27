@@ -7,7 +7,7 @@ Read them with `communicator.stats.snapshot()` and `communicator.health()`, or e
 
 import threading
 import time
-from collections import Counter
+from collections import Counter, OrderedDict
 from dataclasses import dataclass, field
 
 from enocean.protocol.packet import DATA_CRC_ERROR, HEADER_CRC_ERROR, MALFORMED_PACKET, Packet, RadioPacket
@@ -20,6 +20,17 @@ PacketKind = tuple[int, int | None]
 
 def packet_kind(packet: Packet) -> PacketKind:
     return int(packet.packet_type), int(packet.rorg) if isinstance(packet, RadioPacket) else None
+
+
+@dataclass(frozen=True)
+class SenderStats:
+    """What was last heard from one device (per-sender tracking must be enabled)."""
+
+    packets: int
+    last_seen_at: float
+    rorg: int
+    # Signal strength of the last packet, if the module reported it
+    dbm: int | None
 
 
 @dataclass(frozen=True)
@@ -39,6 +50,10 @@ class StatsSnapshot:
     transport_errors: int
     processing_errors: int
     last_packet_received_at: float | None
+    # Keyed by sender ID ('01:81:B7:44'); empty unless per-sender tracking is enabled
+    senders: dict[str, SenderStats] = field(default_factory=dict)
+    # Senders forgotten to stay within max_senders
+    senders_evicted: int = 0
 
 
 @dataclass
@@ -59,15 +74,42 @@ class CommunicatorStats:
     _transport_errors: int = 0
     _processing_errors: int = 0
     _last_packet_received_at: float | None = None
+    _max_senders: int = 0
+    _senders: OrderedDict[str, SenderStats] = field(default_factory=OrderedDict)
+    _senders_evicted: int = 0
+
+    def enable_sender_tracking(self, max_senders: int = 500) -> None:
+        """
+        Also keep per-device statistics, for up to max_senders devices (the least recently heard ones are forgotten
+        beyond that, so neighbours' devices picked up by the radio can't grow memory or metric cardinality forever).
+        """
+        with self._lock:
+            self._max_senders = max_senders
 
     def record_bytes_received(self, count: int) -> None:
         with self._lock:
             self._bytes_received += count
 
     def record_received(self, packet: Packet) -> None:
+        now = time.time()
         with self._lock:
             self._packets_received[packet_kind(packet)] += 1
-            self._last_packet_received_at = time.time()
+            self._last_packet_received_at = now
+            if self._max_senders and isinstance(packet, RadioPacket):
+                self._record_sender(packet, now)
+
+    def _record_sender(self, packet: RadioPacket, now: float) -> None:
+        sender = packet.sender_hex
+        previous = self._senders.pop(sender, None)
+        self._senders[sender] = SenderStats(
+            packets=(previous.packets if previous else 0) + 1,
+            last_seen_at=now,
+            rorg=int(packet.rorg),
+            dbm=packet.dBm if len(packet.optional) >= 6 else None,
+        )
+        while len(self._senders) > self._max_senders:
+            self._senders.popitem(last=False)
+            self._senders_evicted += 1
 
     def record_sent(self, packet: Packet, byte_count: int) -> None:
         with self._lock:
@@ -118,6 +160,8 @@ class CommunicatorStats:
                 transport_errors=self._transport_errors,
                 processing_errors=self._processing_errors,
                 last_packet_received_at=self._last_packet_received_at,
+                senders=dict(self._senders),
+                senders_evicted=self._senders_evicted,
             )
 
 

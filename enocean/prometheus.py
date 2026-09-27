@@ -42,7 +42,8 @@ class EnOceanCollector(Collector):
     Collects metrics from one communicator, or several given as {name: communicator} (adds a `communicator` label).
 
     namespace prefixes every metric name; const_labels are added to every sample (e.g. {'site': 'home'});
-    max_silence (seconds) is passed to health() for the `healthy` gauge.
+    max_silence (seconds) is passed to health() for the `healthy` gauge. per_sender enables per-device tracking
+    (bounded by max_senders) and exports it with a `sender` label: mind the cardinality.
     """
 
     def __init__(
@@ -51,6 +52,8 @@ class EnOceanCollector(Collector):
         namespace: str = 'enocean',
         const_labels: Mapping[str, str] | None = None,
         max_silence: float | None = None,
+        per_sender: bool = False,
+        max_senders: int = 500,
     ) -> None:
         if isinstance(communicators, Communicator):
             self._communicators: dict[str, Communicator] = {'': communicators}
@@ -61,6 +64,10 @@ class EnOceanCollector(Collector):
         self._namespace = namespace
         self._const_labels = dict(const_labels or {})
         self._max_silence = max_silence
+        self._per_sender = per_sender
+        if per_sender:
+            for communicator in self._communicators.values():
+                communicator.stats.enable_sender_tracking(max_senders)
 
     def _labels(self, *names: str) -> list[str]:
         return list(self._const_labels) + self._communicator_label + list(names)
@@ -96,6 +103,12 @@ class EnOceanCollector(Collector):
         healthy = self._gauge('healthy', '1 if communicator.health() reports no problem')
         base_id_known = self._gauge('base_id_known', '1 once the base ID of the module is known')
         queue_size = self._gauge('queue_size', 'Packets waiting in the receive/transmit queues', 'queue')
+        sender_packets = self._counter('sender_packets_received', 'Radio packets received per device', 'sender', 'rorg')
+        sender_last_seen = self._gauge(
+            'sender_last_seen_timestamp_seconds', 'Time of the last packet received per device', 'sender', 'rorg'
+        )
+        sender_dbm = self._gauge('sender_dbm', 'Signal strength of the last packet per device', 'sender', 'rorg')
+        senders_evicted = self._counter('senders_evicted', 'Devices forgotten to stay within max_senders')
 
         for name, communicator in self._communicators.items():
             snapshot = communicator.stats.snapshot()
@@ -124,12 +137,22 @@ class EnOceanCollector(Collector):
             base_id_known.add_metric(values, float(health.base_id_known))
             queue_size.add_metric(values + ['receive'], health.receive_queue_size)
             queue_size.add_metric(values + ['transmit'], health.transmit_queue_size)
+            if self._per_sender:
+                for sender, sender_stats in snapshot.senders.items():
+                    sender_values = values + [sender, _RORG_NAMES.get(sender_stats.rorg, '0x%02x' % sender_stats.rorg)]
+                    sender_packets.add_metric(sender_values, sender_stats.packets)
+                    sender_last_seen.add_metric(sender_values, sender_stats.last_seen_at)
+                    if sender_stats.dbm is not None:
+                        sender_dbm.add_metric(sender_values, sender_stats.dbm)
+                senders_evicted.add_metric(values, snapshot.senders_evicted)
 
         yield from (
             received, sent, bytes_received, bytes_sent, parse_errors, teach_ins, base_id_requests, base_id_timeouts,
             base_id_latency, transport_errors, processing_errors, last_packet, started, up, healthy, base_id_known,
             queue_size,
         )  # fmt: skip
+        if self._per_sender:
+            yield from (sender_packets, sender_last_seen, sender_dbm, senders_evicted)
 
 
 def register(
@@ -138,8 +161,10 @@ def register(
     namespace: str = 'enocean',
     const_labels: Mapping[str, str] | None = None,
     max_silence: float | None = None,
+    per_sender: bool = False,
+    max_senders: int = 500,
 ) -> EnOceanCollector:
     """Creates an EnOceanCollector and registers it (in the default registry unless one is given)."""
-    collector = EnOceanCollector(communicators, namespace, const_labels, max_silence)
+    collector = EnOceanCollector(communicators, namespace, const_labels, max_silence, per_sender, max_senders)
     registry.register(collector)
     return collector

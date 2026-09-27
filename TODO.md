@@ -24,11 +24,8 @@ Remise à niveau du fork `j5lien/enocean`. Cocher au fur et à mesure.
 
 ## Opérabilité
 
-- [ ] Métriques candidates : paquets reçus/envoyés par type de paquet et RORG, octets lus, erreurs CRC
-      (en-tête/données) et resynchronisations, paquets malformés, taille des queues `receive`/`transmit`,
-      réponses teach-in envoyées, durée et échecs de récupération du base ID, déconnexions du port série,
-      ancienneté du dernier paquet reçu ; par émetteur (dernier vu, dBm) seulement en option, à cause de la
-      cardinalité des labels
+- [ ] Exemple de dashboard Grafana et de règles d'alerte Prometheus (module injoignable, silence radio, hausse des
+      erreurs CRC, échecs du base ID)
 
 ## Dépôt GitHub
 
@@ -69,3 +66,4 @@ Remise à niveau du fork `j5lien/enocean`. Cocher au fur et à mesure.
 - [x] Statistiques internes (`communicator.stats`) et santé (`communicator.health()`), sans dépendance
 - [x] Adaptateur Prometheus optionnel (`enocean[prometheus]`, `enocean.prometheus.register()`) : namespace, labels
       constants, registry et plusieurs communicators configurables
+- [x] Métriques par émetteur (paquets, dernier vu, dBm) en option et bornées (`per_sender=True`, `max_senders`)

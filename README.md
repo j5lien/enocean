@@ -114,6 +114,14 @@ It exports `enocean_packets_received_total` and `enocean_packets_sent_total` (by
 `enocean_up`, `enocean_healthy`, `enocean_base_id_known` and `enocean_queue_size` (by `queue`). Values are read from
 the communicator when scraped.
 
+Per-device metrics are opt-in, since each device becomes a time series: `register(communicator, per_sender=True,
+max_senders=500)` adds `enocean_sender_packets_received_total`, `enocean_sender_last_seen_timestamp_seconds` and
+`enocean_sender_dbm` (by `sender` and `rorg`), keeping the most recently heard `max_senders` devices
+(`enocean_senders_evicted_total` counts the others). Without Prometheus, `communicator.stats.enable_sender_tracking()`
+fills `snapshot.senders`.
+
+[`examples/prometheus_exporter.py`](examples/prometheus_exporter.py) is a ready-to-run exporter for a serial module.
+
 ## Development
 
 The development environment uses [uv](https://docs.astral.sh/uv/):

@@ -67,7 +67,8 @@ seconds since last packet, `problems`/`healthy`); transports set `self._transpor
 usable.
 `enocean/prometheus.py` (optional extra `enocean[prometheus]`) is a custom `prometheus_client` collector reading
 stats/health at scrape time; several communicators go in one collector (`communicator` label), since separate
-collectors would register duplicate metric names. Keep `prometheus_client` imports confined to that module.
+collectors would register duplicate metric names. Keep `prometheus_client` imports confined to that module. Per-sender statistics are opt-in and bounded
+(`stats.enable_sender_tracking(max_senders)`, least recently heard evicted) because of label cardinality.
 
 ## Logging conventions
 
