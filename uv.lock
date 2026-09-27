@@ -231,7 +231,7 @@ dev = [
 ]
 
 [package.metadata]
-requires-dist = [{ name = "pyserial", specifier = ">=3.0" }]
+requires-dist = [{ name = "pyserial", specifier = ">=3.5" }]
 
 [package.metadata.requires-dev]
 dev = [

@@ -1,0 +1,32 @@
+# Install with `make hooks`. Hooks run the tools pinned in uv.lock, so versions never drift from CI.
+repos:
+  - repo: local
+    hooks:
+      - id: uv-lock
+        name: uv.lock is up to date
+        entry: uv lock --check
+        language: system
+        files: ^(pyproject\.toml|uv\.lock)$
+        pass_filenames: false
+      - id: ruff-check
+        name: ruff check
+        entry: uv run --locked ruff check --fix
+        language: system
+        types_or: [python, pyi]
+      - id: ruff-format
+        name: ruff format
+        entry: uv run --locked ruff format
+        language: system
+        types_or: [python, pyi, markdown]
+      - id: mypy
+        name: mypy
+        entry: uv run --locked mypy
+        language: system
+        types: [python]
+        pass_filenames: false
+      - id: supported-profiles
+        name: SUPPORTED_PROFILES.md is up to date
+        entry: uv run --locked python generate_supported_profiles.py
+        language: system
+        files: ^(enocean/protocol/EEP\.xml|generate_supported_profiles\.py)$
+        pass_filenames: false
