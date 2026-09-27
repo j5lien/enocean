@@ -1,10 +1,8 @@
 from enocean.communicators import Communicator
-from enocean.decorators import timing
 from enocean.protocol.constants import DB6, PACKET, RORG
 from enocean.protocol.packet import Packet, UTETeachInPacket
 
 
-@timing(rounds=100, limit=750)
 def test_ute_in():
     communicator = Communicator()
     communicator.base_id = [0xDE, 0xAD, 0xBE, 0xEF]

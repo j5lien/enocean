@@ -24,8 +24,7 @@ Bugs :
 Dépréciations à retirer (changements incompatibles : version 2.0, avec guide de migration) :
 
 - [x] Alias `PACKET.RADIO` / `PACKET.RADIO_ADVANCED` retirés : `PACKET(1).name` vaut maintenant `RADIO_ERP1`
-- [ ] `enocean.decorators` (outil de test livré dans le package) et les tests `@timing`, inactifs sans
-      `WITH_TIMINGS=1` : supprimer, ou passer à `pytest-benchmark` si les performances doivent être suivies
+- [x] `enocean.decorators` et les tests `@timing` supprimés (inactifs sans `WITH_TIMINGS=1`)
 - [ ] `script-files` (déprécié par setuptools) qui installe `enocean_example.py` dans le PATH : supprimer, ou le
       remplacer par un point d'entrée `[project.scripts]`
 - [ ] Ré-export de `RORG` dans `enocean.protocol.eep` (« left as a helper »)
