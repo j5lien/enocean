@@ -1,4 +1,6 @@
 # https://gist.github.com/hypebeast/3833758
+from collections.abc import Iterable
+
 # fmt: off
 CRC_TABLE = (
     0x00, 0x07, 0x0e, 0x09, 0x1c, 0x1b, 0x12, 0x15, 0x38,
@@ -33,7 +35,7 @@ CRC_TABLE = (
 # fmt: on
 
 
-def calc(msg):
+def calc(msg: Iterable[int]) -> int:
     checksum = 0
     for byte in msg:
         checksum = CRC_TABLE[checksum & 0xFF ^ byte & 0xFF]

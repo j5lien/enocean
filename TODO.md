@@ -21,7 +21,6 @@ Remise à niveau du fork `j5lien/enocean`. Cocher au fur et à mesure.
 ## Montées de version / modernisation
 
 - [ ] Remonter la version minimale de `pyserial` (`>=3.0`, 2015)
-- [ ] Annotations de type + `mypy` en CI + `py.typed`
 - [ ] Remplacer `script-files` (déprécié) par un point d'entrée `[project.scripts]`, vérifier que les exemples
       fonctionnent encore
 - [ ] Hooks `pre-commit` (ruff, lock uv)
@@ -61,3 +60,5 @@ Remise à niveau du fork `j5lien/enocean`. Cocher au fur et à mesure.
       l'eau ; erreur d'écriture série loggée
 - [x] README réécrit (installation depuis le fork, exemples vérifiés, développement), métadonnées du package
       (URL du fork, mainteneur, mots-clés), `consolelogger.py` testé (couverture de la librairie : 97 %)
+- [x] Package entièrement typé (`mypy --strict` en CI, `py.typed`, `FieldValue` pour `packet.parsed`) ;
+      `.git-blame-ignore-revs` pour le commit de formatage

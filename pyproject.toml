@@ -17,6 +17,7 @@ classifiers = [
     "Programming Language :: Python :: 3.14",
     "License :: OSI Approved :: MIT License",
     "Topic :: Home Automation",
+    "Typing :: Typed",
 ]
 license = { file = "LICENSE" }
 authors = [{ name = "Kimmo Huoman", email = "kipenroskaposti@gmail.com" }]
@@ -36,9 +37,11 @@ Upstream = "https://github.com/kipe/enocean"
 [dependency-groups]
 dev = [
     "hypothesis>=6.168.2",
+    "mypy>=2.3.1",
     "pytest>=8",
     "pytest-cov>=5",
     "ruff>=0.13",
+    "types-pyserial>=3.5.0.20260712",
 ]
 
 [tool.setuptools]
@@ -46,6 +49,7 @@ packages = ["enocean", "enocean.protocol", "enocean.communicators"]
 script-files = ["examples/enocean_example.py"]
 
 [tool.setuptools.package-data]
+"enocean" = ["py.typed"]
 "enocean.protocol" = ["EEP.xml"]
 
 [tool.pytest.ini_options]
@@ -86,3 +90,8 @@ max-complexity = 15
 
 [tool.ruff.lint.per-file-ignores]
 "__init__.py" = ["F401"]
+
+[tool.mypy]
+files = ["enocean"]
+exclude = ["/tests/"]
+strict = true

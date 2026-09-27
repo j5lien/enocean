@@ -2,7 +2,7 @@ import logging
 import logging.handlers
 
 
-def init_logging(level=logging.DEBUG, log_to_file=False, logsize=1024, logcount=5):
+def init_logging(level: int = logging.DEBUG, log_to_file: bool = False, logsize: int = 1024, logcount: int = 5) -> None:
     formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 
     logger = logging.getLogger('enocean')
