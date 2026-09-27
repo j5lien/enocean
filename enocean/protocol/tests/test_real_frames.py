@@ -79,3 +79,19 @@ def test_d2_01_12_same_command_we_would_send():
     """RadioPacket.create() builds the very payload the controller sent to switch the light on."""
     packet = RadioPacket.create(rorg=RORG.VLD, rorg_func=0x01, rorg_type=0x12, command=1, IO=1, OV=100)
     assert packet.data[1:4] == [0x01, 0x01, 0x64]
+
+
+@pytest.mark.parametrize(
+    ('payload', 'sender', 'expected'),
+    [
+        ([0x01, 0x01, 0x64], CONTROLLER, {'CMD': 'Command ID 1', 'DV': 'Switch to new output value'}),
+        ([0x04, 0x61, 0xE4], OFFICE_LIGHT, {'CMD': 'Command ID 4', 'LC': 'Local control enabled'}),
+    ],
+    ids=['set-output', 'status'],
+)
+def test_d2_01_12_command_is_detected(payload, sender, expected):
+    """Without command=, each telegram is decoded with its own command's layout."""
+    _, values = decode(radio_frame(RORG.VLD, payload, sender, 0x00, -70), 0x01, 0x12)
+
+    assert values.items() >= expected.items()
+    assert values['OV'] == 'Output value 100% or ON'

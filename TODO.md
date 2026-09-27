@@ -9,9 +9,8 @@ Bugs :
 
 - [x] `Packet(type, bytearray(...))` perdait silencieusement ses données : `bytes`/`bytearray`/tuples acceptés, les
       autres types lèvent `TypeError`
-- [ ] Décodage VLD multi-commandes sans `command=` : c'est la première variante du profil qui s'applique, pas celle de
-      la trame (ex. D2-01-12 : une commande 1 d'un contrôleur est décodée avec la structure de la commande 4). Détecter
-      la commande depuis le champ `<command>` du profil
+- [x] Profils à plusieurs commandes : la commande est détectée depuis la trame au décodage (avant : première variante
+      du profil) ; `create()` écrit la commande dans le bon champ (A5-13-01 et A5-38-08 partaient avec la commande 0)
 - [ ] `UTETeachInPacket.number_of_channels` n'est jamais lu (toujours `0xFF`) ; la valeur est dans `channel`
 - [ ] `RadioPacket.learn` vaut toujours `True` pour les VLD (pas de bit d'apprentissage) : `None` ou documenter
 - [ ] `packet.received` : `datetime` naïf, et seulement renseigné par le communicator (le sniffer le formate avec `%z`,
@@ -27,7 +26,6 @@ Dépréciations à retirer (changements incompatibles : version 2.0, avec guide 
 
 - [ ] Alias `PACKET.RADIO` / `PACKET.RADIO_ADVANCED` : ce sont les noms canoniques de l'enum (`PACKET(1).name` vaut
       `RADIO`), faire de `RADIO_ERP1` / `RADIO_ERP2` les noms canoniques puis retirer les alias
-- [ ] Paramètre `bitarray` de `EEP.find_profile()`, jamais utilisé
 - [ ] `enocean.decorators` (outil de test livré dans le package) et les tests `@timing`, inactifs sans
       `WITH_TIMINGS=1` : supprimer, ou passer à `pytest-benchmark` si les performances doivent être suivies
 - [ ] `script-files` (déprécié par setuptools) qui installe `enocean_example.py` dans le PATH : supprimer, ou le

@@ -272,11 +272,13 @@ class Packet:
         # and no security (security not supported as per EnOcean Serial Protocol).
         packet.optional = [3] + destination + [0xFF] + [0]
 
-        if command:
-            # Set CMD to command, if applicable.. Helps with VLD.
-            kwargs['CMD'] = command
+        command_field = packet._command_field(rorg, rorg_func, rorg_type) if command else None
+        if command and not isinstance(command_field, Element):
+            kwargs[command_field or 'CMD'] = command
 
         packet.set_eep(kwargs)
+        if command and isinstance(command_field, Element):
+            packet._bit_data = EEP._set_raw(command_field, command, packet._bit_data)
         if rorg in [RORG.BS1, RORG.BS4] and not learn:
             if rorg == RORG.BS1:
                 packet.data[1] |= 1 << 3
@@ -291,6 +293,21 @@ class Packet:
         parsed_packet.rorg = rorg
         parsed_packet.parse_eep(rorg_func, rorg_type, direction, command)
         return parsed_packet
+
+    def _command_field(self, rorg: int, rorg_func: int, rorg_type: int) -> str | Element | None:
+        """
+        Where create() writes the command id: the shortcut of the selected variant's own command field (named after the
+        profile's <command>, e.g. CMD or COM), else the profile-level <command> element itself (e.g. A5-13-01, whose
+        variants have no command field), or None for profiles without commands.
+        """
+        profile = self.eep.telegrams.get(rorg, {}).get(rorg_func, {}).get(rorg_type)
+        eep_command = profile.find('command') if profile is not None else None
+        if eep_command is None:
+            return None
+        shortcut = eep_command.get('shortcut', 'CMD')
+        if self._profile is not None and any(tag.get('shortcut') == shortcut for tag in self._profile):
+            return shortcut
+        return eep_command
 
     def parse(self) -> OrderedDict[str, FieldValue]:
         """Parse data from Packet"""

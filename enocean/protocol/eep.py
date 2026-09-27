@@ -226,8 +226,30 @@ class EEP:
         # extract data description
         # the direction tag is optional
         if direction is None:
-            return profile.find('data')
+            detected = self._detect_command(profile, bitarray)
+            return detected if detected is not None else profile.find('data')
         return self._find_child(profile, 'data', direction=direction)
+
+    @staticmethod
+    def _detect_command(profile: Element, bitarray: list[bool]) -> Element | None:
+        """
+        For profiles with several commands, the <data> variant the telegram actually carries: the one whose own
+        command field holds its command number, preferring variants whose length matches the telegram's (the command
+        field is not at the same place in every variant, e.g. D2-05-00). None if the profile has no commands or none
+        matches.
+        """
+        eep_command = profile.find('command')
+        if eep_command is None or not bitarray:
+            return None
+        shortcuts = {eep_command.get('shortcut'), 'CMD'}
+        variants = [data for data in profile.findall('data') if data.get('command')]
+        same_length = [data for data in variants if data.get('bits') and int(data.get('bits', 0)) * 8 == len(bitarray)]
+        for candidates in (same_length, variants):
+            for data in candidates:
+                field = next((tag for tag in data if tag.get('shortcut') in shortcuts), eep_command)
+                if EEP._get_raw(field, bitarray) == int(_attr(data, 'command')):
+                    return data
+        return None
 
     def get_values(
         self, profile: Element | None, bitarray: list[bool], status: list[bool]

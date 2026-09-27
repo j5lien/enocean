@@ -271,3 +271,15 @@ def test_decoding_matches_snapshot():
     assert sorted(current) == sorted(expected), 'profiles added or removed: regenerate the snapshot'
     for variant_id in sorted(expected):
         assert current[variant_id] == expected[variant_id], variant_id
+
+
+@by_id([v for v in CREATABLE if v.command is not None])
+def test_command_is_detected_when_decoding(variant):
+    """Decoding without command= picks the variant the telegram carries, as parsing with command= would."""
+    sent = create(variant)
+    received = RadioPacket(1, list(sent.data), list(sent.optional))
+
+    received.parse_eep(variant.func, variant.type)
+
+    assert received._profile is not None and received._profile.get('command') == str(variant.command)
+    assert received.parsed == sent.parsed
