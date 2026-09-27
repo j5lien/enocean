@@ -31,8 +31,7 @@ Receive telegrams from a serial module and decode them:
 ```python
 import queue
 
-from enocean.communicators import SerialCommunicator
-from enocean.protocol.constants import RORG
+from enocean import RORG, SerialCommunicator
 
 communicator = SerialCommunicator(port='/dev/ttyUSB0')
 communicator.start()
@@ -55,11 +54,60 @@ finally:
 Instead of polling `communicator.receive`, you can pass `callback=` to the communicator to be called with each
 packet. UTE teach-in requests are answered automatically unless `teach_in=False`.
 
-Build and send a telegram:
+Declare your devices and received telegrams come decoded with the right profile:
 
 ```python
-from enocean.protocol.constants import RORG
-from enocean.protocol.packet import RadioPacket
+from enocean import RORG, DeviceRegistry, SerialCommunicator
+
+devices = DeviceRegistry.from_config(
+    {
+        '00:37:7E:06': {'eep': 'F6-02-02', 'name': 'Office wall switch', 'room': 'office'},
+        '05:99:77:AF': {'eep': 'D2-01-12', 'name': 'Office light'},
+    },
+    defaults={RORG.RPS: 'F6-02-02'},  # profile to try for unknown devices, by RORG
+    ignored=['FF:E8:06:02'],  # dropped
+)
+communicator = SerialCommunicator(port='/dev/ttyUSB0', devices=devices)
+communicator.start()
+
+packet = communicator.receive.get()
+print(packet.device.name if packet.device else 'unknown', packet.eep_id, packet.parsed)
+print(packet.to_dict())  # JSON-serializable, e.g. to index or publish it
+```
+
+Profiles with several commands (e.g. D2-01-12) are decoded with the command the telegram carries. To see what a
+profile contains: `EEP().describe('D2-01-12')`.
+
+Teach the module in to an actuator (UTE): open a learn window, then put the actuator in learn mode (e.g. press its
+button); it announces its profile and learns the module's ID:
+
+```python
+communicator = SerialCommunicator(port='/dev/ttyUSB0', teach_in=False)  # don't pair with anyone outside learn()
+communicator.start()
+devices = communicator.learn(timeout=30, max_devices=1)  # added to communicator.devices
+```
+
+With `teach_in=True` (the default), teach-in requests are answered at any time. Deletion requests (and repeated
+requests from devices already known) are answered as deletions, and unknown profiles are refused.
+
+Control actuators the module is taught in to:
+
+```python
+from enocean import BlindActuator, SwitchActuator
+
+light = SwitchActuator(communicator, '05:99:77:AF')  # D2-01-12 by default
+light.turn_on(channel=1)
+light.query_status()  # answered by a status telegram (command 4)
+
+cover = BlindActuator(communicator, '05:97:BA:73')  # D2-05-00 by default
+cover.go_to(position=50)
+cover.stop()
+```
+
+Or build any telegram from its profile's fields:
+
+```python
+from enocean import RORG, RadioPacket
 
 # D2-01-12, command 1: switch output channel 0 on
 packet = RadioPacket.create(
@@ -67,7 +115,7 @@ packet = RadioPacket.create(
     rorg_func=0x01,
     rorg_type=0x12,
     command=1,
-    destination=[0x01, 0x94, 0xE3, 0xB9],
+    destination=[0x05, 0x99, 0x77, 0xAF],
     sender=communicator.base_id,
     IO=0,
     OV=100,

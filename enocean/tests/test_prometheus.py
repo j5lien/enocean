@@ -40,6 +40,7 @@ def test_metrics_of_one_communicator(registry):
         BASE_ID_RESPONSE_FRAME
     )
     assert value('enocean_parse_errors_total', {'kind': 'data_crc'}) == 1
+    assert value('enocean_packets_ignored_total') == 0
     assert value('enocean_parse_errors_total', {'kind': 'malformed'}) == 0
     assert value('enocean_last_packet_received_timestamp_seconds') > 0
     assert value('enocean_start_time_seconds') > 0

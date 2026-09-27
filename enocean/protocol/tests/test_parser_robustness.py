@@ -154,7 +154,7 @@ def test_radio_frame_without_optional_data():
     assert isinstance(packet, RadioPacket)
     assert packet.sender_hex == '01:81:B7:44'
     assert packet.destination_hex == 'FF:FF:FF:FF'
-    assert packet.dBm == 0
+    assert packet.dbm is None
     packet.parse_eep(0x02, 0x05)
     assert round(packet.parsed['TMP']['value'], 2) == 26.67
 
