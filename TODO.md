@@ -2,10 +2,6 @@
 
 Remise à niveau du fork `j5lien/enocean`. Cocher au fur et à mesure.
 
-## En cours
-
-- [ ] Ouvrir la PR `e2e-communicator-tests` → `main` et vérifier la CI (macOS runner, skip Windows des tests série)
-
 ## Tests
 
 - [ ] Trames réelles capturées sur tes appareils (D2-01-12, D2-14-30, D2-14-41, …) avec les valeurs affichées par
@@ -20,10 +16,8 @@ Remise à niveau du fork `j5lien/enocean`. Cocher au fur et à mesure.
 
 ## Montées de version / modernisation
 
-- [ ] Remonter la version minimale de `pyserial` (`>=3.0`, 2015)
 - [ ] Remplacer `script-files` (déprécié) par un point d'entrée `[project.scripts]`, vérifier que les exemples
       fonctionnent encore
-- [ ] Hooks `pre-commit` (ruff, lock uv)
 
 ## Documentation / métadonnées
 
@@ -62,3 +56,4 @@ Remise à niveau du fork `j5lien/enocean`. Cocher au fur et à mesure.
       (URL du fork, mainteneur, mots-clés), `consolelogger.py` testé (couverture de la librairie : 97 %)
 - [x] Package entièrement typé (`mypy --strict` en CI, `py.typed`, `FieldValue` pour `packet.parsed`) ;
       `.git-blame-ignore-revs` pour le commit de formatage
+- [x] Hooks pre-commit (`make hooks`) utilisant les outils de `uv.lock` ; `pyserial>=3.5`

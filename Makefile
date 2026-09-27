@@ -1,7 +1,10 @@
-.PHONY: install test test-linux test-timing cov lint format profiles clean
+.PHONY: install hooks test test-linux test-timing cov lint format profiles clean
 
 install:  ## Create .venv and install package + dev deps
 	uv sync
+
+hooks:  ## Install the git pre-commit hooks
+	uvx pre-commit install
 
 test:
 	uv run pytest

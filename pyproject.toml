@@ -25,7 +25,7 @@ maintainers = [{ name = "Julien Gobillot" }]
 keywords = ["enocean", "esp3", "eep", "home-automation", "serial"]
 requires-python = ">=3.10"
 dependencies = [
-    "pyserial>=3.0",
+    "pyserial>=3.5",
 ]
 
 [project.urls]
