@@ -28,6 +28,13 @@ uv run pytest enocean/protocol/tests/test_packet.py::test_packet_examples
 ```
 
 Tests are plain pytest functions (no classes); use `pytest.raises` for expected exceptions.
+
+Communicator end-to-end tests (`enocean/communicators/tests/test_{serial,tcp}_communicator.py`) run the real
+communicator threads with no hardware: a pseudo-terminal stands in for the EnOcean serial module (tests act as
+the radio on the pty master side), and TCP tests use real local sockets. Fixtures and sample ESP3 frames live in
+`enocean/communicators/tests/conftest.py`; the `running` fixture guarantees threads are stopped and joined.
+Serial e2e tests are skipped on Windows (no pty). An unhandled exception in a communicator thread fails the test
+(`filterwarnings` in `pyproject.toml`).
 Lint rules (ruff: E/W/F/C90, line length 120, max complexity 15) live in `pyproject.toml`.
 
 Regenerate `SUPPORTED_PROFILES.md` from `EEP.xml` after changing the EEP definitions:

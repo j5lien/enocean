@@ -47,6 +47,10 @@ script-files = ["examples/enocean_example.py"]
 [tool.pytest.ini_options]
 testpaths = ["enocean"]
 addopts = "-q"
+filterwarnings = [
+    # A crash in a communicator thread must fail the test, not just warn
+    "error::pytest.PytestUnhandledThreadExceptionWarning",
+]
 
 [tool.coverage.run]
 source = ["enocean"]
