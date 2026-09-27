@@ -1,0 +1,210 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Profiles merged into the generated EEP.xml on top of the official specification (see tools/generate_eep.py).
+  A profile here replaces the official one with the same RORG-FUNC-TYPE, or adds it when the specification lacks it.
+  Keep the reason for each entry below.
+
+  - D2-14-30: the specification names six distinct bit fields "SMA"; these distinct shortcuts keep them usable.
+  - D2-14-41: published after EEP 2.6.8.
+  - F6-10-00, F6-10-01: the specification gives the handle position as masked values over the whole field
+    (0b11X0XXXX, 0b1111XXXX, 0b1101XXXX), which can't be expressed; only two bits vary, decoded here:
+    X0 = horizontal (open), 01 = up (tilted), 11 = down (closed).
+-->
+<telegrams>
+  <telegram rorg="0xF6" type="RPS" description="RPS Telegram">
+    <profiles func="0x10" description="Mechanical Handle">
+      <profile type="0x00" description="Window Handle">
+        <data>
+          <enum description="Window handle position" shortcut="WIN" offset="2" size="2">
+            <item value="0" description="Horizontal (open)" />
+            <item value="1" description="Up (tilted)" />
+            <item value="2" description="Horizontal (open)" />
+            <item value="3" description="Down (closed)" />
+          </enum>
+          <status description="T21" shortcut="T21" offset="2" size="1" />
+          <status description="NU" shortcut="NU" offset="3" size="1" />
+        </data>
+      </profile>
+      <profile type="0x01" description="Window Handle ERP2">
+        <data>
+          <enum description="Handle" shortcut="HC" offset="1" size="1">
+            <item value="1" description="handle" />
+          </enum>
+          <enum description="Window handle position" shortcut="HVL" offset="6" size="2">
+            <item value="0" description="Horizontal (open)" />
+            <item value="1" description="Up (tilted)" />
+            <item value="2" description="Horizontal (open)" />
+            <item value="3" description="Down (closed)" />
+          </enum>
+        </data>
+      </profile>
+    </profiles>
+  </telegram>
+  <telegram rorg="0xD2" type="VLD" description="VLD Telegram">
+    <profiles func="0x14" description="Multi Function Sensors">
+      <profile type="0x41" description="Indoor -Temperature, Humidity XYZ Acceleration, Illumination Sensor">
+        <data bits="9">
+          <value description="Temperature 10" shortcut="TMP" offset="0" size="10" unit="°C">
+            <range>
+              <min>0</min>
+              <max>1000</max>
+            </range>
+            <scale>
+              <min>-40.0</min>
+              <max>60.0</max>
+            </scale>
+          </value>
+          <value description="Rel. Humidity linear)" shortcut="HUM" offset="10" size="8" unit="%">
+            <range>
+              <min>0</min>
+              <max>200</max>
+            </range>
+            <scale>
+              <min>0.0</min>
+              <max>100.0</max>
+            </scale>
+          </value>
+          <value description="Illumination linear)" shortcut="ILL" offset="18" size="17" unit="lx">
+            <range>
+              <min>0</min>
+              <max>100000</max>
+            </range>
+            <scale>
+              <min>0</min>
+              <max>100000</max>
+            </scale>
+          </value>
+          <enum description="Acceleration Status" shortcut="ACC" offset="35" size="2">
+            <item description="Periodic Update" value="0" />
+            <item description="Threshold 1 exceeded" value="1" />
+            <item description="Threshold 2 exceeded" value="2" />
+          </enum>
+          <value description="Absolute Acceleration on X axis" shortcut="ACX" offset="37" size="10" unit="g">
+            <range>
+              <min>0</min>
+              <max>1000</max>
+            </range>
+            <scale>
+              <min>-2.5</min>
+              <max>2.5</max>
+            </scale>
+          </value>
+          <value description="Absolute Acceleration on Y axis" shortcut="ACY" offset="47" size="10" unit="g">
+            <range>
+              <min>0</min>
+              <max>1000</max>
+            </range>
+            <scale>
+              <min>-2.5</min>
+              <max>2.5</max>
+            </scale>
+          </value>
+          <value description="Absolute Acceleration on Z axis" shortcut="ACZ" offset="57" size="10" unit="g">
+            <range>
+              <min>0</min>
+              <max>1000</max>
+            </range>
+            <scale>
+              <min>-2.5</min>
+              <max>2.5</max>
+            </scale>
+          </value>
+          <enum description="Contact" shortcut="CO" offset="67" size="1">
+            <item description="Open" value="0" />
+            <item description="Closed" value="1" />
+          </enum>
+        </data>
+      </profile>
+      <profile type="0x30" description="Smoke Alarm Humidity Temperature Confort Air">
+        <data bits="6">
+          <enum description="Smoke Alarm status" shortcut="SMAS" offset="0" size="1">
+            <item description="Smoke Alarm non-activated" value="0" />
+            <item description="Smoke Alarm activated" value="1" />
+          </enum>
+          <enum description="Sensor fault mode status" shortcut="SFMD" offset="1" size="1">
+            <item description="Sensor Fault mode non-activated" value="0" />
+            <item description="Sensor Fault mode activated" value="1" />
+          </enum>
+          <enum description="Smoke Alarm Condition analysis: Maintenance" shortcut="SMACAM" offset="2" size="1">
+            <item description="Maintenance OK" value="0" />
+            <item description="Maintenance not done" value="1" />
+          </enum>
+          <enum description="Smoke Alarm Condition analysis: Humidity" shortcut="SMACAH" offset="3" size="1">
+            <item description="Humidity range OK" value="0" />
+            <item description="Humidity range NOK" value="1" />
+          </enum>
+          <enum description="Smoke Alarm Condition analysis: Temperature" shortcut="SMACAT" offset="4" size="1">
+            <item description="Temperature range OK" value="0" />
+            <item description="Temperature range NOK" value="1" />
+          </enum>
+          <value description="Time since last maintenance" shortcut="TSLM" offset="5" size="8" unit="week">
+            <range>
+              <min>0</min>
+              <max>250</max>
+            </range>
+            <scale>
+              <min>0</min>
+              <max>250</max>
+            </scale>
+            <item description="Error" value="255" />
+          </value>
+          <enum description="Energy Storage" shortcut="ES" offset="13" size="2">
+            <item description="High" value="0" />
+            <item description="Medium" value="1" />
+            <item description="Low" value="2" />
+            <item description="Critical" value="3" />
+          </enum>
+          <value description="Remaining product life time" shortcut="RPLT" offset="15" size="8" unit="month">
+            <range>
+              <min>0</min>
+              <max>120</max>
+            </range>
+            <scale>
+              <min>0</min>
+              <max>120</max>
+            </scale>
+            <item description="Error" value="255" />
+          </value>
+          <value description="Temperature (linear)" shortcut="TMP8" offset="23" size="8" unit="°C">
+            <range>
+              <min>0</min>
+              <max>250</max>
+            </range>
+            <scale>
+              <min>0.000000</min>
+              <max>50.000000</max>
+            </scale>
+            <item description="Error" value="255" />
+          </value>
+          <value description="Humidity (linear)" shortcut="HUM" offset="31" size="8" unit="%">
+            <range>
+              <min>0</min>
+              <max>200</max>
+            </range>
+            <scale>
+              <min>0.000000</min>
+              <max>100.000000</max>
+            </scale>
+            <item description="Error" value="255" />
+          </value>
+          <enum description="Hygrothermal Confort" shortcut="HCI" offset="39" size="2">
+            <item description="Good" value="0" />
+            <item description="Medium" value="1" />
+            <item description="Bad" value="2" />
+            <item description="Error" value="3" />
+          </enum>
+          <enum description="T/Hum. Indoor Air Analysis" shortcut="IAQTH" offset="41" size="3">
+            <item description="Optimal air range" value="0" />
+            <item description="Dry Air range" value="1" />
+            <item description="High humidity range" value="2" />
+            <item description="High temperature and humidity range" value="3" />
+            <item description="Temperature or Humidity out of analysis range" value="4" />
+            <item description="Reserved" value="5" />
+            <item description="Reserved" value="6" />
+            <item description="Error" value="7" />
+          </enum>
+        </data>
+      </profile>
+    </profiles>
+  </telegram>
+</telegrams>

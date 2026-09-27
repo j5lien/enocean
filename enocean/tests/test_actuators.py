@@ -52,8 +52,8 @@ def test_blind_commands(communicator):
     cover.go_to(position=50)
     payload, packet = sent(communicator)
     assert payload == [50, 127, 0x00, 0x01]
-    assert packet.parsed['POS']['value'] == 'Output position 50%'
-    assert packet.parsed['ANG']['value'] == 'Do not change'
+    assert packet.parsed['POS']['value'] == 50.0 and packet.parsed['POS']['unit'] == '%'
+    assert packet.parsed['ANG']['raw_value'] == 127  # do not change
     cover.go_to(angle=20)
     assert sent(communicator)[0] == [127, 20, 0x00, 0x01]
     cover.stop()

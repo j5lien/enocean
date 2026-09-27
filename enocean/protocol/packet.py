@@ -2,7 +2,7 @@ import datetime
 import logging
 import warnings
 from collections import OrderedDict
-from collections.abc import Callable
+from collections.abc import Callable, Mapping
 from enum import IntEnum
 from typing import TYPE_CHECKING, Any
 from xml.etree.ElementTree import Element
@@ -273,6 +273,7 @@ class Packet:
         packet.data = [packet.rorg]
         # Select EEP at this point, so we know how many bits we're dealing with (for VLD).
         packet.select_eep(rorg_func, rorg_type, direction, command)
+        packet._select_variant_for(kwargs)
 
         # Initialize data depending on the profile.
         if rorg in [RORG.RPS, RORG.BS1]:
@@ -289,13 +290,14 @@ class Packet:
         # and no security (security not supported as per EnOcean Serial Protocol).
         packet.optional = [3] + destination + [0xFF] + [0]
 
-        command_field = packet._command_field(rorg, rorg_func, rorg_type) if command else None
-        if command and not isinstance(command_field, Element):
+        command_field = packet._command_field(rorg, rorg_func, rorg_type) if command is not None else None
+        if command is not None and not isinstance(command_field, Element):
             kwargs[command_field or 'CMD'] = command
 
         packet.set_eep(kwargs)
-        if command and isinstance(command_field, Element):
+        if command is not None and isinstance(command_field, Element):
             packet._bit_data = EEP._set_raw(command_field, command, packet._bit_data)
+        packet._apply_conditions(kwargs)
         if rorg in [RORG.BS1, RORG.BS4] and not learn:
             if rorg == RORG.BS1:
                 packet.data[1] |= 1 << 3
@@ -309,8 +311,53 @@ class Packet:
         assert parsed_packet is not None, 'a packet we just built must parse'
         parsed_packet.received = None
         parsed_packet.rorg = rorg
-        parsed_packet.parse_eep(rorg_func, rorg_type, direction, command)
+        # Decoded like a received telegram: the variant is recognized from its conditions
+        parsed_packet.parse_eep(rorg_func, rorg_type, direction, None if packet._has_conditions() else command)
         return parsed_packet
+
+    def _apply_conditions(self, given: Mapping[str, Any]) -> None:
+        """
+        Sets the data and status bits the selected variant requires, so the telegram decodes as that variant, except
+        for fields given explicitly (e.g. ECID when several variants share a command).
+        """
+        if self._profile is None:
+            return
+        positions = {(tag.get('offset'), tag.get('size')): tag.get('shortcut') for tag in self._profile}
+        for condition in self._profile.findall('condition'):
+            if positions.get((condition.get('offset'), condition.get('size'))) in given:
+                continue
+            value = int(condition.get('value', 0))
+            if condition.get('source') == 'status':
+                self._bit_status = EEP._set_raw(condition, value, self._bit_status)
+            else:
+                self._bit_data = EEP._set_raw(condition, value, self._bit_data)
+
+    def _select_variant_for(self, values: Mapping[str, Any]) -> None:
+        """
+        Among the variants sharing the selected one's command, the most specific one whose condition fields match the
+        values given (e.g. D2-01 command 15 with ECID=1), so create() can build any of them.
+        """
+        if self._profile is None or self._profile.find('condition') is None or self.rorg_func is None:
+            return
+        profile = self.eep.telegrams[self.rorg][self.rorg_func][self.rorg_type or 0]
+        selected = (self._profile.get('command'), self._profile.get('direction'))
+        best, best_score = None, -1
+        for variant in profile.findall('data'):
+            if (variant.get('command'), variant.get('direction')) != selected:
+                continue
+            fields = {(tag.get('offset'), tag.get('size')): tag.get('shortcut', '') for tag in variant}
+            required = {
+                fields.get((c.get('offset'), c.get('size')), ''): int(c.get('value', 0))
+                for c in variant.findall('condition')
+            }
+            given = {name: value for name, value in required.items() if isinstance(values.get(name), int)}
+            if all(values[name] == value for name, value in given.items()) and len(given) > best_score:
+                best, best_score = variant, len(given)
+        if best is not None:
+            self._profile = best
+
+    def _has_conditions(self) -> bool:
+        return self._profile is not None and self._profile.find('condition') is not None
 
     def _command_field(self, rorg: int, rorg_func: int, rorg_type: int) -> str | Element | None:
         """
@@ -347,7 +394,9 @@ class Packet:
         # set EEP profile
         self.rorg_func = rorg_func
         self.rorg_type = rorg_type
-        self._profile = self.eep.find_profile(self._bit_data, self.rorg, rorg_func, rorg_type, direction, command)
+        self._profile = self.eep.find_profile(
+            self._bit_data, self.rorg, rorg_func, rorg_type, direction, command, self._bit_status
+        )
         return self._profile is not None
 
     def parse_eep(
