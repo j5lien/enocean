@@ -12,12 +12,13 @@ Bugs :
 - [x] Profils à plusieurs commandes : la commande est détectée depuis la trame au décodage (avant : première variante
       du profil) ; `create()` écrit la commande dans le bon champ (A5-13-01 et A5-38-08 partaient avec la commande 0)
 - [x] `UTETeachInPacket.number_of_channels` est lu depuis la trame (était toujours `0xFF`)
-- [ ] `RadioPacket.learn` vaut toujours `True` pour les VLD (pas de bit d'apprentissage) : `None` ou documenter
+- [x] `RadioPacket.learn` documenté : toujours `True` pour RPS et VLD (pas de bit d'apprentissage, tout télégramme
+      peut servir au teach-in) ; le passer à `None` casserait les applications qui s'en servent pour l'appairage
 - [ ] `packet.received` : `datetime` naïf, et seulement renseigné par le communicator (le sniffer le formate avec `%z`,
       qui sort vide) : horodatage UTC avec fuseau
 - [ ] `SerialCommunicator` n'accepte pas `teach_in` (le sniffer le modifie après `start()`, avec une course possible)
       et son port par défaut est `/dev/ttyAMA0` (UART de Raspberry Pi)
-- [ ] Setter de `base_id` documenté « only for testing purposes » alors qu'il a des usages réels
+- [x] Setter de `base_id` documenté pour ses vrais usages (ID déjà connu)
 - [x] A5-04-02 : plage brute de la température corrigée (0..250, confirmé par la spec EEP 2.6.7)
 - [ ] `TCPCommunicator` est en réception seule (`send()` sans effet, réponses teach-in non transmises) et ne sert
       qu'un client à la fois : à revoir si un usage bidirectionnel est souhaité

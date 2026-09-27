@@ -196,5 +196,5 @@ class Communicator(threading.Thread):
 
     @base_id.setter
     def base_id(self, base_id: list[int] | None) -> None:
-        """Sets the Base ID manually, only for testing purposes."""
+        """Sets the Base ID without asking the module, e.g. when it is already known."""
         self._base_id = base_id
