@@ -2,11 +2,24 @@ import datetime
 import logging
 import queue
 import threading
+import time
 from collections.abc import Callable
 from typing import TypeGuard
 
 from enocean.protocol.constants import PACKET, PARSE_RESULT, RETURN_CODE
-from enocean.protocol.packet import Packet, ResponsePacket, UTETeachInPacket
+from enocean.protocol.packet import Packet, RadioPacket, ResponsePacket, UTETeachInPacket
+from enocean.stats import CommunicatorStats, Health
+from enocean.utils import to_hex_string
+
+
+def packet_log_fields(packet: Packet) -> dict[str, object]:
+    """Fields attached to log records about a packet, for structured log handlers."""
+    fields: dict[str, object] = {'packet_type': int(packet.packet_type)}
+    if isinstance(packet, RadioPacket):
+        fields['rorg'] = int(packet.rorg)
+        fields['sender'] = packet.sender_hex
+        fields['dbm'] = packet.dBm
+    return fields
 
 
 class Communicator(threading.Thread):
@@ -32,9 +45,14 @@ class Communicator(threading.Thread):
         self._base_id: list[int] | None = None
         # Set while a CO_RD_IDBASE request is waiting for its response
         self._base_id_requested = False
+        self._base_id_requested_at = 0.0
         self._base_id_received = threading.Event()
         # UTE teach-in requests waiting for the Base ID before they can be answered
         self._pending_teach_ins: list[UTETeachInPacket] = []
+        # Runtime statistics, see enocean.stats
+        self.stats = CommunicatorStats()
+        # Set by transports while their port/socket is usable
+        self._transport_ready = False
         # Should new messages be learned automatically? Defaults to True.
         # TODO: Not sure if we should use CO_WR_LEARNMODE??
         self.teach_in = teach_in
@@ -43,8 +61,7 @@ class Communicator(threading.Thread):
         """Get message from send queue, if one exists"""
         try:
             packet = self.transmit.get(block=False)
-            self.logger.info('Sending packet')
-            self.logger.debug(packet)
+            self.logger.debug('Sending %s', packet, extra=packet_log_fields(packet))
             return packet
         except queue.Empty:
             pass
@@ -57,6 +74,11 @@ class Communicator(threading.Thread):
         self.transmit.put(packet)
         return True
 
+    def _feed(self, data: bytes | bytearray) -> None:
+        """Appends bytes read from the transport to the parse buffer."""
+        self._buffer.extend(bytearray(data))
+        self.stats.record_bytes_received(len(data))
+
     def stop(self) -> None:
         self._stop_flag.set()
 
@@ -64,7 +86,7 @@ class Communicator(threading.Thread):
         """Parses messages and puts them to receive queue"""
         # Loop while we get new messages
         while True:
-            status, self._buffer, packet = Packet.parse_msg(self._buffer)
+            status, self._buffer, packet = Packet.parse_msg(self._buffer, on_error=self.stats.record_parse_error)
             # If message is incomplete -> break the loop
             if status == PARSE_RESULT.INCOMPLETE:
                 return status
@@ -72,10 +94,13 @@ class Communicator(threading.Thread):
             # If message is OK, add it to receive queue or send to the callback method
             if status == PARSE_RESULT.OK and packet:
                 packet.received = datetime.datetime.now()
+                self.stats.record_received(packet)
 
                 if self._base_id_requested and self._is_base_id_response(packet):
                     self._base_id = packet.response_data
+                    self.logger.info('Base ID of the module: %s', to_hex_string(self._base_id))
                     self._base_id_requested = False
+                    self.stats.record_base_id_received(time.monotonic() - self._base_id_requested_at)
                     self._base_id_received.set()
                     self._answer_pending_teach_ins()
 
@@ -84,11 +109,11 @@ class Communicator(threading.Thread):
                     if self.base_id is not None:
                         self._answer_pending_teach_ins()
 
+                self.logger.debug('Received %s', packet, extra=packet_log_fields(packet))
                 if self.__callback is None:
                     self.receive.put(packet)
                 else:
                     self.__callback(packet)
-                self.logger.debug(packet)
 
     @staticmethod
     def _is_base_id_response(packet: Packet) -> TypeGuard[ResponsePacket]:
@@ -106,15 +131,50 @@ class Communicator(threading.Thread):
             packet = self._pending_teach_ins.pop(0)
             if packet.sender == self._base_id:
                 continue
-            self.logger.info('Sending response to UTE teach-in.')
+            self.logger.info(
+                'Answering UTE teach-in from %s (EEP %02X-%02X-%02X).',
+                packet.sender_hex,
+                packet.rorg_of_eep,
+                packet.rorg_func,
+                packet.rorg_type,
+                extra=packet_log_fields(packet),
+            )
             self.send(packet.create_response_packet(self._base_id))
+            self.stats.record_teach_in_response()
 
     def _request_base_id(self) -> None:
         if not self._base_id_requested:
             self._base_id_requested = True
+            self._base_id_requested_at = time.monotonic()
             self._base_id_received.clear()
+            self.stats.record_base_id_request()
             # Send COMMON_COMMAND 0x08, CO_RD_IDBASE request to the module
             self.send(Packet(PACKET.COMMON_COMMAND, data=[0x08]))
+
+    def health(self, max_silence: float | None = None) -> Health:
+        """
+        Current state, e.g. for a liveness/readiness probe. With max_silence (seconds), going that long without
+        receiving any packet counts as a problem (after startup, the delay counts from the communicator's creation).
+        """
+        snapshot = self.stats.snapshot()
+        silence = time.time() - (snapshot.last_packet_received_at or snapshot.started_at)
+        running = self.is_alive() and not self._stop_flag.is_set()
+        problems = []
+        if not running:
+            problems.append('communicator thread is not running')
+        if not self._transport_ready:
+            problems.append('transport is not ready')
+        if max_silence is not None and silence > max_silence:
+            problems.append('no packet received for %.0f s' % silence)
+        return Health(
+            running=running,
+            transport_ready=self._transport_ready,
+            base_id_known=self._base_id is not None,
+            receive_queue_size=self.receive.qsize(),
+            transmit_queue_size=self.transmit.qsize(),
+            seconds_since_last_packet=silence,
+            problems=tuple(problems),
+        )
 
     @property
     def base_id(self) -> list[int] | None:
@@ -129,6 +189,7 @@ class Communicator(threading.Thread):
         self._request_base_id()
         if threading.current_thread() is not self and not self._base_id_received.wait(1):
             self.logger.warning('No response from the module to the Base ID request.')
+            self.stats.record_base_id_timeout()
             self._base_id_requested = False
         # Return the current Base ID (might be None).
         return self._base_id

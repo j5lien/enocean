@@ -78,6 +78,50 @@ communicator.send(packet)
 More in [`examples/`](examples/). `TCPCommunicator` receives packets over TCP instead, for instance from
 [`examples/serial_to_tcp.py`](examples/serial_to_tcp.py) running on the machine the module is plugged into.
 
+## Monitoring
+
+**Logs.** The library is silent until you configure logging. `enocean.consolelogger.init_logging()` sends its logs to
+stderr, or as one JSON object per line with `init_logging(json_format=True)`; packet-related records carry
+`packet_type`, `rorg`, `sender` and `dbm` fields.
+
+**Statistics and health**, always available, no dependency:
+
+```python
+snapshot = communicator.stats.snapshot()
+print(snapshot.packets_received, snapshot.parse_errors, snapshot.last_packet_received_at)
+
+health = communicator.health(max_silence=600)  # no packet for 10 minutes counts as a problem
+if not health.healthy:
+    print(health.problems)
+```
+
+**Prometheus**, with the optional dependency (`pip install "enocean[prometheus]"`):
+
+```python
+from prometheus_client import start_http_server
+
+from enocean.prometheus import register
+
+register(communicator, max_silence=600)  # or {'usb0': com0, 'usb1': com1}; namespace=, const_labels=, registry=
+start_http_server(9100)
+```
+
+It exports `enocean_packets_received_total` and `enocean_packets_sent_total` (by `packet_type` and `rorg`),
+`enocean_received_bytes_total`, `enocean_sent_bytes_total`, `enocean_parse_errors_total` (by `kind`: `header_crc`,
+`data_crc`, `malformed`), `enocean_teach_in_responses_total`, `enocean_base_id_requests_total`,
+`enocean_base_id_timeouts_total`, `enocean_base_id_fetch_seconds`, `enocean_transport_errors_total`,
+`enocean_processing_errors_total`, `enocean_last_packet_received_timestamp_seconds`, `enocean_start_time_seconds`,
+`enocean_up`, `enocean_healthy`, `enocean_base_id_known` and `enocean_queue_size` (by `queue`). Values are read from
+the communicator when scraped.
+
+Per-device metrics are opt-in, since each device becomes a time series: `register(communicator, per_sender=True,
+max_senders=500)` adds `enocean_sender_packets_received_total`, `enocean_sender_last_seen_timestamp_seconds` and
+`enocean_sender_dbm` (by `sender` and `rorg`), keeping the most recently heard `max_senders` devices
+(`enocean_senders_evicted_total` counts the others). Without Prometheus, `communicator.stats.enable_sender_tracking()`
+fills `snapshot.senders`.
+
+[`examples/prometheus_exporter.py`](examples/prometheus_exporter.py) is a ready-to-run exporter for a serial module.
+
 ## Development
 
 The development environment uses [uv](https://docs.astral.sh/uv/):

@@ -57,6 +57,16 @@ BASE_ID_RESPONSE_FRAME = bytes([
 TIMEOUT = 3
 
 
+def wait_until(predicate, timeout=TIMEOUT):
+    """Waits for a condition updated by another thread; returns whether it became true in time."""
+    deadline = time.time() + timeout
+    while not predicate():
+        if time.time() > deadline:
+            return False
+        time.sleep(0.01)
+    return True
+
+
 class FakeSerialModule:
     """The "radio module" end of the pty: writes frames to the communicator, reads frames it sends."""
 
