@@ -15,6 +15,7 @@ Dev environment is managed with [uv](https://docs.astral.sh/uv/) (`pyproject.tom
 ```bash
 make install       # uv sync: creates .venv with the package (editable) + dev deps
 make test          # uv run pytest
+make test-linux    # same, in a Linux Docker container (PY=3.10 to pick the version)
 make test-timing   # WITH_TIMINGS=1, enables @timing-decorated rounds/limits
 make cov           # pytest with coverage
 make lint          # ruff check (config in pyproject.toml)
