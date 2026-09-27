@@ -7,32 +7,27 @@ d'abord assainir, ensuite retravailler l'API publique, puis la documenter.
 
 Bugs :
 
-- [ ] `Packet(type, bytearray(...))` perd silencieusement ses données (`data` remplacé par `[]`) : accepter
-      `bytes`/`bytearray`
-- [ ] Décodage VLD multi-commandes sans `command=` : c'est la première variante du profil qui s'applique, pas celle de
-      la trame (ex. D2-01-12 : une commande 1 d'un contrôleur est décodée avec la structure de la commande 4). Détecter
-      la commande depuis le champ `<command>` du profil
-- [ ] `UTETeachInPacket.number_of_channels` n'est jamais lu (toujours `0xFF`) ; la valeur est dans `channel`
-- [ ] `RadioPacket.learn` vaut toujours `True` pour les VLD (pas de bit d'apprentissage) : `None` ou documenter
-- [ ] `packet.received` : `datetime` naïf, et seulement renseigné par le communicator (le sniffer le formate avec `%z`,
-      qui sort vide) : horodatage UTC avec fuseau
-- [ ] `SerialCommunicator` n'accepte pas `teach_in` (le sniffer le modifie après `start()`, avec une course possible)
-      et son port par défaut est `/dev/ttyAMA0` (UART de Raspberry Pi)
-- [ ] Setter de `base_id` documenté « only for testing purposes » alors qu'il a des usages réels
-- [ ] A5-04-02 : plage brute de la température à 0..255 au lieu de 0..250 (à confirmer avec la spec EEP)
-- [ ] `TCPCommunicator` est en réception seule (`send()` sans effet, réponses teach-in non transmises) et ne sert
-      qu'un client à la fois : à revoir si un usage bidirectionnel est souhaité
+- [x] `Packet(type, bytearray(...))` perdait silencieusement ses données : `bytes`/`bytearray`/tuples acceptés, les
+      autres types lèvent `TypeError`
+- [x] Profils à plusieurs commandes : la commande est détectée depuis la trame au décodage (avant : première variante
+      du profil) ; `create()` écrit la commande dans le bon champ (A5-13-01 et A5-38-08 partaient avec la commande 0)
+- [x] `UTETeachInPacket.number_of_channels` est lu depuis la trame (était toujours `0xFF`)
+- [x] `RadioPacket.learn` documenté : toujours `True` pour RPS et VLD (pas de bit d'apprentissage, tout télégramme
+      peut servir au teach-in) ; le passer à `None` casserait les applications qui s'en servent pour l'appairage
+- [x] `packet.received` : horodatage UTC avec fuseau, posé par `parse_msg()` (était naïf et posé par le communicator)
+- [x] `SerialCommunicator` accepte `teach_in` et son port est obligatoire (défaut `/dev/ttyAMA0`, UART de Raspberry Pi)
+- [x] Setter de `base_id` documenté pour ses vrais usages (ID déjà connu)
+- [x] A5-04-02 : plage brute de la température corrigée (0..250, confirmé par la spec EEP 2.6.7)
+- [x] `TCPCommunicator` reste en réception seule (décision : pas d'usage bidirectionnel prévu), documenté comme tel
 
 Dépréciations à retirer (changements incompatibles : version 2.0, avec guide de migration) :
 
-- [ ] Alias `PACKET.RADIO` / `PACKET.RADIO_ADVANCED` : ce sont les noms canoniques de l'enum (`PACKET(1).name` vaut
-      `RADIO`), faire de `RADIO_ERP1` / `RADIO_ERP2` les noms canoniques puis retirer les alias
-- [ ] Paramètre `bitarray` de `EEP.find_profile()`, jamais utilisé
-- [ ] `enocean.decorators` (outil de test livré dans le package) et les tests `@timing`, inactifs sans
-      `WITH_TIMINGS=1` : supprimer, ou passer à `pytest-benchmark` si les performances doivent être suivies
-- [ ] `script-files` (déprécié par setuptools) qui installe `enocean_example.py` dans le PATH : supprimer, ou le
-      remplacer par un point d'entrée `[project.scripts]`
-- [ ] Ré-export de `RORG` dans `enocean.protocol.eep` (« left as a helper »)
+- [x] Alias `PACKET.RADIO` / `PACKET.RADIO_ADVANCED` retirés : `PACKET(1).name` vaut maintenant `RADIO_ERP1`
+- [x] `enocean.decorators` et les tests `@timing` supprimés (inactifs sans `WITH_TIMINGS=1`)
+- [x] `script-files` retiré : `enocean_example.py` n'est plus installé dans le PATH (il reste dans `examples/`)
+- [x] Ré-export de `RORG` dans `enocean.protocol.eep` retiré
+- [x] `UTETeachInPacket.channel` déprécié (`DeprecationWarning`) au profit de `number_of_channels` ; à supprimer à la
+      version majeure suivante
 
 ## 2. API d'intégration (d'après l'usage dans enocean-sniffer)
 

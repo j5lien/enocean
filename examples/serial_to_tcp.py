@@ -8,7 +8,8 @@ from enocean.communicators.utils import send_to_tcp_socket
 from enocean.consolelogger import init_logging
 
 init_logging()
-communicator = SerialCommunicator()
+# Serial port of the module, e.g. /dev/ttyUSB0 (Linux) or /dev/cu.usbserial-... (macOS)
+communicator = SerialCommunicator(port=sys.argv[1] if len(sys.argv) > 1 else '/dev/ttyUSB0')
 communicator.start()
 while communicator.is_alive():
     try:

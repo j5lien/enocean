@@ -1,10 +1,10 @@
-from enocean.decorators import timing
+import pytest
+
 from enocean.protocol.constants import RORG
 from enocean.protocol.eep import EEP
-from enocean.protocol.packet import Packet
+from enocean.protocol.packet import Packet, RadioPacket
 
 
-@timing(1000)
 def test_temperature():
     """Tests RADIO message for EEP -profile 0xA5 0x02 0x05"""
     # fmt: off
@@ -32,7 +32,6 @@ def test_temperature():
     assert packet.sender_hex == '01:81:B7:44'
 
 
-@timing(1000)
 def test_magnetic_switch():
     """Tests RADIO message for EEP -profile 0xD5 0x00 0x01"""
     # fmt: off
@@ -69,7 +68,6 @@ def test_magnetic_switch():
     assert packet.repeater_count == 0
 
 
-@timing(1000)
 def test_switch():
     # fmt: off
     status, buf, packet = Packet.parse_msg(bytearray([
@@ -111,7 +109,6 @@ def test_switch():
     assert packet.repeater_count == 0
 
 
-@timing(1000)
 def test_eep_parsing():
     # fmt: off
     status, buf, packet = Packet.parse_msg(bytearray([
@@ -131,7 +128,6 @@ def test_eep_parsing():
     assert packet.repeater_count == 0
 
 
-@timing(1000)
 def test_eep_remaining():
     # Magnetic switch -example
     # fmt: off
@@ -163,7 +159,6 @@ def test_eep_remaining():
     assert packet.parse_eep(0x02, 0x05) == ['TMP']
 
 
-@timing(1000)
 def test_eep_direction():
     # fmt: off
     status, buf, packet = Packet.parse_msg(bytearray([
@@ -181,7 +176,6 @@ def test_eep_direction():
     assert packet.parsed['SP']['value'] == 50
 
 
-@timing(1000)
 def test_vld():
     # fmt: off
     status, buf, p = Packet.parse_msg(bytearray([
@@ -289,3 +283,11 @@ def test_fails():
     # fmt: on
     assert eep.find_profile(packet._bit_data, 0xD2, 0x01, 0x01) is not None
     assert eep.find_profile(packet._bit_data, 0xD2, 0x01, 0x01, command=-1) is None
+
+
+def test_a5_04_02_temperature_scale():
+    """EEP 2.6.7: TMP valid range 0...250 maps to -20...+60 °C (was decoded with 0...255)."""
+    for raw, expected in ((0, -20.0), (138, 24.16), (250, 60.0)):
+        packet = RadioPacket(1, [RORG.BS4, 0x00, 0x64, raw, 0x0A, 0x01, 0x02, 0x03, 0x04, 0x00], [])
+        packet.parse_eep(0x04, 0x02)
+        assert packet.parsed['TMP']['value'] == pytest.approx(expected)

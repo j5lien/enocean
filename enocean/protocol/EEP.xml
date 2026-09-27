@@ -550,7 +550,7 @@
           <value description="Temperature (linear)" shortcut="TMP" offset="16" size="8" unit="°C">
             <range>
               <min>0</min>
-              <max>255</max>
+              <max>250</max>
             </range>
             <scale>
               <min>-20.000000</min>

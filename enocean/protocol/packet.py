@@ -1,5 +1,6 @@
 import datetime
 import logging
+import warnings
 from collections import OrderedDict
 from collections.abc import Callable
 from typing import Any
@@ -27,28 +28,22 @@ class Packet:
     eep = EEP()
     logger = logging.getLogger('enocean.protocol.packet')
 
-    def __init__(self, packet_type: int, data: list[int] | None = None, optional: list[int] | None = None) -> None:
+    def __init__(
+        self,
+        packet_type: int,
+        data: list[int] | bytes | bytearray | None = None,
+        optional: list[int] | bytes | bytearray | None = None,
+    ) -> None:
         self.packet_type = packet_type
         self.rorg: int = RORG.UNDEFINED
         self.rorg_func: int | None = None
         self.rorg_type: int | None = None
         self.rorg_manufacturer: int | None = None
 
+        # When the packet was parsed from the serial stream (UTC, timezone-aware); None for packets built locally
         self.received: datetime.datetime | None = None
-        self.data: list[int]
-        self.optional: list[int]
-
-        if not isinstance(data, list) or data is None:
-            self.logger.debug('Replacing Packet.data with default value.')
-            self.data = []
-        else:
-            self.data = data
-
-        if not isinstance(optional, list) or optional is None:
-            self.logger.debug('Replacing Packet.optional with default value.')
-            self.optional = []
-        else:
-            self.optional = optional
+        self.data = self._int_list(data, 'data')
+        self.optional = self._int_list(optional, 'optional')
 
         self.status = 0
         self.parsed: OrderedDict[str, FieldValue] = OrderedDict()
@@ -56,6 +51,16 @@ class Packet:
         self._profile: Element | None = None
 
         self.parse()
+
+    @staticmethod
+    def _int_list(value: list[int] | bytes | bytearray | tuple[int, ...] | None, name: str) -> list[int]:
+        if value is None:
+            return []
+        if isinstance(value, list):
+            return value
+        if isinstance(value, (bytes, bytearray, tuple)):
+            return list(value)
+        raise TypeError('Packet %s must be a list of ints, bytes or bytearray, not %s' % (name, type(value).__name__))
 
     def __str__(self) -> str:
         return '0x%02X %s %s %s' % (
@@ -194,6 +199,8 @@ class Packet:
             if on_error:
                 on_error(MALFORMED_PACKET)
 
+        packet.received = datetime.datetime.now(datetime.timezone.utc)
+
         return PARSE_RESULT.OK, buf, packet
 
     @staticmethod
@@ -269,11 +276,13 @@ class Packet:
         # and no security (security not supported as per EnOcean Serial Protocol).
         packet.optional = [3] + destination + [0xFF] + [0]
 
-        if command:
-            # Set CMD to command, if applicable.. Helps with VLD.
-            kwargs['CMD'] = command
+        command_field = packet._command_field(rorg, rorg_func, rorg_type) if command else None
+        if command and not isinstance(command_field, Element):
+            kwargs[command_field or 'CMD'] = command
 
         packet.set_eep(kwargs)
+        if command and isinstance(command_field, Element):
+            packet._bit_data = EEP._set_raw(command_field, command, packet._bit_data)
         if rorg in [RORG.BS1, RORG.BS4] and not learn:
             if rorg == RORG.BS1:
                 packet.data[1] |= 1 << 3
@@ -285,9 +294,25 @@ class Packet:
         # For example, stuff like RadioPacket.learn should be set.
         parsed_packet = Packet.parse_msg(packet.build())[2]
         assert parsed_packet is not None, 'a packet we just built must parse'
+        parsed_packet.received = None
         parsed_packet.rorg = rorg
         parsed_packet.parse_eep(rorg_func, rorg_type, direction, command)
         return parsed_packet
+
+    def _command_field(self, rorg: int, rorg_func: int, rorg_type: int) -> str | Element | None:
+        """
+        Where create() writes the command id: the shortcut of the selected variant's own command field (named after the
+        profile's <command>, e.g. CMD or COM), else the profile-level <command> element itself (e.g. A5-13-01, whose
+        variants have no command field), or None for profiles without commands.
+        """
+        profile = self.eep.telegrams.get(rorg, {}).get(rorg_func, {}).get(rorg_type)
+        eep_command = profile.find('command') if profile is not None else None
+        if eep_command is None:
+            return None
+        shortcut = eep_command.get('shortcut', 'CMD')
+        if self._profile is not None and any(tag.get('shortcut') == shortcut for tag in self._profile):
+            return shortcut
+        return eep_command
 
     def parse(self) -> OrderedDict[str, FieldValue]:
         """Parse data from Packet"""
@@ -344,6 +369,17 @@ class Packet:
 
 
 class RadioPacket(Packet):
+    """
+    A radio telegram (ERP1).
+
+    Attributes set when parsing: `sender` / `destination` (4-byte IDs, also as `sender_hex` / `destination_hex`),
+    `dBm` (signal strength, 0 if the module didn't report it) and `learn`.
+
+    `learn` tells whether the telegram can be used to teach the device in. 1BS and 4BS telegrams carry a learn bit,
+    UTE telegrams a teach-in request; RPS and VLD telegrams have no learn bit, so `learn` is always True for them:
+    any of their telegrams may be used to teach the device in (e.g. pressing a rocker switch).
+    """
+
     destination: list[int] = [0xFF, 0xFF, 0xFF, 0xFF]
     dBm = 0
     sender: list[int] = [0xFF, 0xFF, 0xFF, 0xFF]
@@ -394,7 +430,7 @@ class RadioPacket(Packet):
             self.destination = self.optional[1:5]
             self.dBm = -self.optional[5]
         self.sender = self.data[-5:-1]
-        # Default to learn == True, as some devices don't have a learn button
+        # RPS and VLD have no learn bit: any of their telegrams may be used for teach-in
         self.learn = True
 
         self.rorg = self.data[0]
@@ -439,9 +475,16 @@ class UTETeachInPacket(RadioPacket):
     number_of_channels = 0xFF
     rorg_of_eep: int = RORG.UNDEFINED
     request_type = NOT_SPECIFIC
-    channel: int | None = None
 
     contains_eep = True
+
+    @property
+    def channel(self) -> int:
+        """Deprecated alias of number_of_channels."""
+        warnings.warn(
+            'UTETeachInPacket.channel is deprecated, use number_of_channels', DeprecationWarning, stacklevel=2
+        )
+        return self.number_of_channels
 
     @property
     def bidirectional(self) -> bool:
@@ -463,7 +506,8 @@ class UTETeachInPacket(RadioPacket):
         self.rorg_manufacturer = enocean.utils.from_bitarray(
             self._bit_data[DB3.BIT_2 : DB2.BIT_7] + self._bit_data[DB4.BIT_7 : DB3.BIT_7]
         )  # noqa: E501
-        self.channel = self.data[2]
+        # Number of channels to teach in (0xFF: all)
+        self.number_of_channels = self.data[2]
         self.rorg_type = self.data[5]
         self.rorg_func = self.data[6]
         self.rorg_of_eep = self.data[7]

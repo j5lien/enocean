@@ -50,7 +50,6 @@ dev = [
 
 [tool.setuptools]
 packages = ["enocean", "enocean.protocol", "enocean.communicators"]
-script-files = ["examples/enocean_example.py"]
 
 [tool.setuptools.package-data]
 "enocean" = ["py.typed"]
