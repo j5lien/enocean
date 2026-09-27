@@ -55,6 +55,31 @@ decoding of fixed bit patterns against `eep_snapshot.json`: review the snapshot 
 
 There's no build step; it's a pure-Python package (`uv build` produces sdist/wheel).
 
+## Monitoring
+
+Every communicator keeps `CommunicatorStats` (`enocean/stats.py`) in `communicator.stats`: thread-safe counters
+updated by the communicator thread (packets/bytes received and sent, parse errors by kind, teach-in responses, base ID
+requests/timeouts/latency, transport and processing errors, last packet time), read through `stats.snapshot()`.
+`Packet.parse_msg(buf, on_error=...)` reports parse error kinds without coupling the protocol layer to stats.
+Transports must push received bytes through `Communicator._feed()` so they are counted.
+`communicator.health(max_silence=None)` returns a `Health` (running, transport ready, base ID known, queue sizes,
+seconds since last packet, `problems`/`healthy`); transports set `self._transport_ready` while their port/socket is
+usable.
+`enocean/prometheus.py` (optional extra `enocean[prometheus]`) is a custom `prometheus_client` collector reading
+stats/health at scrape time; several communicators go in one collector (`communicator` label), since separate
+collectors would register duplicate metric names. Keep `prometheus_client` imports confined to that module. Per-sender statistics are opt-in and bounded
+(`stats.enable_sender_tracking(max_senders)`, least recently heard evicted) because of label cardinality.
+
+## Logging conventions
+
+The `enocean` logger has a `NullHandler`: the library is silent unless the application configures logging
+(`enocean.consolelogger.init_logging()`, optionally `json_format=True`). Levels: DEBUG for per-packet traffic and
+expected radio noise (header CRC errors while resynchronizing), INFO for lifecycle events (started/stopped, base ID,
+teach-in answered), WARNING for dropped or unusable data (data CRC error, malformed packet, unknown profile), ERROR
+for transport failures, `logger.exception` for errors raised while processing packets (e.g. in user callbacks). Pass
+lazy `%s` args, never pre-formatted strings, and `extra=packet_log_fields(packet)` on packet-related records so
+structured handlers get `packet_type`/`rorg`/`sender`/`dbm`.
+
 ## Releasing
 
 Not published to PyPI. Update `CHANGELOG.md` (new `## [x.y.z] - date` section) and `version` in `pyproject.toml`,

@@ -26,6 +26,7 @@ class TCPCommunicator(Communicator):
         sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         sock.bind((self.host, self.port))
         sock.listen(5)
+        self._transport_ready = True
         sock.settimeout(0.5)
 
         while not self._stop_flag.is_set():
@@ -42,9 +43,15 @@ class TCPCommunicator(Communicator):
                     break
                 if not data:
                     break
-                self._buffer.extend(bytearray(data))
-                self.parse()
+                self._feed(data)
+                try:
+                    self.parse()
+                except Exception:
+                    # Most likely raised by the user's callback: keep serving, but with the full traceback
+                    self.logger.exception('Error while processing received packets')
+                    self.stats.record_processing_error()
             client.close()
             self.logger.debug('Client disconnected')
         sock.close()
+        self._transport_ready = False
         self.logger.info('TCPCommunicator stopped')

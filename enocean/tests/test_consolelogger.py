@@ -1,3 +1,4 @@
+import json
 import logging
 import logging.handlers
 
@@ -35,3 +36,21 @@ def test_logs_to_rotating_file(enocean_logger, tmp_path, monkeypatch):
     assert any(isinstance(h, logging.handlers.RotatingFileHandler) for h in enocean_logger.handlers)
     content = (tmp_path / 'enocean.log').read_text()
     assert 'to file' in content and 'filtered out' not in content
+
+
+def test_json_format_includes_structured_fields(enocean_logger, capsys):
+    init_logging(level=logging.INFO, json_format=True)
+
+    logging.getLogger('enocean.test').info('received %s', 'x', extra={'sender': '01:02:03:04', 'rorg': 0xA5})
+    try:
+        raise ValueError('boom')
+    except ValueError:
+        logging.getLogger('enocean.test').exception('failed')
+
+    first, second = (json.loads(line) for line in capsys.readouterr().err.splitlines())
+    assert first['message'] == 'received x'
+    assert first['level'] == 'INFO'
+    assert first['logger'] == 'enocean.test'
+    assert first['sender'] == '01:02:03:04' and first['rorg'] == 0xA5
+    assert 'time' in first and 'args' not in first
+    assert 'ValueError: boom' in second['exception']

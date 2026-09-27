@@ -22,12 +22,15 @@ Remise à niveau du fork `j5lien/enocean`. Cocher au fur et à mesure.
 ## Documentation / métadonnées
 
 
+## Opérabilité
+
+- [ ] Exemple de dashboard Grafana et de règles d'alerte Prometheus (module injoignable, silence radio, hausse des
+      erreurs CRC, échecs du base ID)
+
 ## Dépôt GitHub
 
-- [ ] Détacher le fork de `kipe/enocean` pour que les PR visent `j5lien/enocean` par défaut
 - [ ] `gh auth login -h github.com` pour pouvoir créer les PR et suivre la CI depuis le terminal
 - [ ] Activer les alertes Dependabot et CodeQL (Settings → Code security)
-- [ ] Protéger `main` : CI obligatoire avant merge
 - [ ] Publication PyPI : pas pour l'instant (le nom `enocean` appartient au projet d'origine)
 
 ## Fait
@@ -57,3 +60,10 @@ Remise à niveau du fork `j5lien/enocean`. Cocher au fur et à mesure.
       `.git-blame-ignore-revs` pour le commit de formatage
 - [x] Hooks pre-commit (`make hooks`) utilisant les outils de `uv.lock` ; `pyserial>=3.5`
 - [x] Release 1.0.0 : `CHANGELOG.md`, workflow de release sur tag (release GitHub avec wheel/sdist, sans PyPI)
+- [x] Fork détaché de `kipe/enocean`, `main` protégée
+- [x] Logs : niveaux revus (bruit radio en DEBUG, télégramme corrompu en WARNING, traces complètes des erreurs de
+      callback), `NullHandler`, champs structurés (`packet_type`, `rorg`, `sender`, `dbm`), `init_logging(json_format=True)`
+- [x] Statistiques internes (`communicator.stats`) et santé (`communicator.health()`), sans dépendance
+- [x] Adaptateur Prometheus optionnel (`enocean[prometheus]`, `enocean.prometheus.register()`) : namespace, labels
+      constants, registry et plusieurs communicators configurables
+- [x] Métriques par émetteur (paquets, dernier vu, dBm) en option et bornées (`per_sender=True`, `max_senders`)

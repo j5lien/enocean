@@ -15,7 +15,7 @@ from enocean.communicators.serialcommunicator import SerialCommunicator
 from enocean.protocol.constants import PACKET, RORG
 from enocean.protocol.packet import Packet, RadioPacket, UTETeachInPacket
 
-from conftest import BASE_ID_RESPONSE_FRAME, RADIO_FRAME, TIMEOUT, UTE_TEACH_IN_FRAME
+from conftest import BASE_ID_RESPONSE_FRAME, RADIO_FRAME, TIMEOUT, UTE_TEACH_IN_FRAME, wait_until
 
 
 def test_radio_frame_is_received_and_decoded(pty_port, running):
@@ -97,6 +97,7 @@ def test_exception_in_callback_does_not_kill_communicator(pty_port, running):
 
     assert len(received) == 2
     assert com.is_alive()
+    assert com.stats.snapshot().processing_errors == 1
 
 
 def test_sent_packet_is_written_to_serial(pty_port, running):
@@ -110,6 +111,10 @@ def test_sent_packet_is_written_to_serial(pty_port, running):
 
     written = module.read_packet()
     assert written.build() == packet.build()
+    assert wait_until(lambda: com.stats.snapshot().packets_sent)
+    snapshot = com.stats.snapshot()
+    assert snapshot.packets_sent == {(PACKET.RADIO_ERP1, RORG.RPS): 1}
+    assert snapshot.bytes_sent == len(packet.build())
 
 
 def test_base_id_is_fetched_from_module(pty_port, running):
@@ -182,6 +187,7 @@ def test_device_disconnect_stops_communicator(pty_port, running):
 
     com.join(TIMEOUT)
     assert not com.is_alive()
+    assert com.stats.snapshot().transport_errors == 1
 
 
 def test_common_command_packet_roundtrip(pty_port, running):
@@ -252,3 +258,50 @@ def test_ute_teach_in_fetches_unknown_base_id_then_answers(pty_port, running):
     assert response.sender_hex == 'FF:87:CA:00'
     assert response.destination_hex == '01:94:E3:B9'
     assert isinstance(com.receive.get(timeout=TIMEOUT), UTETeachInPacket)
+    assert wait_until(lambda: com.stats.snapshot().teach_in_responses == 1)
+
+
+def test_health(pty_port, running):
+    module, port = pty_port
+    com = SerialCommunicator(port=port)
+    assert com.health().problems == ('communicator thread is not running',)
+
+    running(com)
+    health = com.health()
+    assert health.healthy and health.running and health.transport_ready
+    assert not health.base_id_known
+    assert com.health(max_silence=0).problems[0].startswith('no packet received for')
+
+    module.write(RADIO_FRAME)
+    assert wait_until(lambda: com.health().receive_queue_size == 1)
+    assert com.health().seconds_since_last_packet < 1
+    assert com.health(max_silence=10).healthy
+
+    os.close(module.fd)
+    com.join(TIMEOUT)
+    health = com.health()
+    assert not health.healthy
+    assert set(health.problems) == {'communicator thread is not running', 'transport is not ready'}
+
+
+def test_prometheus_metrics_of_a_running_communicator(pty_port, running):
+    from prometheus_client import CollectorRegistry
+
+    from enocean.prometheus import register
+
+    module, port = pty_port
+    com = running(SerialCommunicator(port=port))
+    registry = CollectorRegistry()
+    register(com, registry=registry, max_silence=60)
+    answer_base_id_request(module)
+
+    assert com.base_id == [0xFF, 0x87, 0xCA, 0x00]
+    com.send(Packet(PACKET.COMMON_COMMAND, data=[0x03]))
+    module.read_packet()
+
+    value = registry.get_sample_value
+    assert value('enocean_up') == 1
+    assert value('enocean_healthy') == 1
+    assert value('enocean_base_id_known') == 1
+    assert 0 <= value('enocean_base_id_fetch_seconds') < 1
+    assert wait_until(lambda: value('enocean_packets_sent_total', {'packet_type': 'common_command', 'rorg': ''}) == 2)
