@@ -55,6 +55,14 @@ decoding of fixed bit patterns against `eep_snapshot.json`: review the snapshot 
 
 There's no build step; it's a pure-Python package (`uv build` produces sdist/wheel).
 
+## Monitoring
+
+Every communicator keeps `CommunicatorStats` (`enocean/stats.py`) in `communicator.stats`: thread-safe counters
+updated by the communicator thread (packets/bytes received and sent, parse errors by kind, teach-in responses, base ID
+requests/timeouts/latency, transport and processing errors, last packet time), read through `stats.snapshot()`.
+`Packet.parse_msg(buf, on_error=...)` reports parse error kinds without coupling the protocol layer to stats.
+Transports must push received bytes through `Communicator._feed()` so they are counted.
+
 ## Logging conventions
 
 The `enocean` logger has a `NullHandler`: the library is silent unless the application configures logging

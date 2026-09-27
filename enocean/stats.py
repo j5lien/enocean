@@ -1,0 +1,120 @@
+"""
+Runtime statistics of a communicator, always collected (no dependency, negligible cost).
+
+Read them with `communicator.stats.snapshot()`, or expose them to Prometheus with `enocean.prometheus`.
+"""
+
+import threading
+import time
+from collections import Counter
+from dataclasses import dataclass, field
+
+from enocean.protocol.packet import DATA_CRC_ERROR, HEADER_CRC_ERROR, MALFORMED_PACKET, Packet, RadioPacket
+
+PARSE_ERRORS = (HEADER_CRC_ERROR, DATA_CRC_ERROR, MALFORMED_PACKET)
+
+# (packet type, RORG or None for non-radio packets)
+PacketKind = tuple[int, int | None]
+
+
+def packet_kind(packet: Packet) -> PacketKind:
+    return int(packet.packet_type), int(packet.rorg) if isinstance(packet, RadioPacket) else None
+
+
+@dataclass(frozen=True)
+class StatsSnapshot:
+    """A consistent copy of the statistics at one point in time. Timestamps are `time.time()` values."""
+
+    started_at: float
+    packets_received: dict[PacketKind, int]
+    packets_sent: dict[PacketKind, int]
+    bytes_received: int
+    bytes_sent: int
+    parse_errors: dict[str, int]
+    teach_in_responses: int
+    base_id_requests: int
+    base_id_timeouts: int
+    base_id_fetch_seconds: float | None
+    transport_errors: int
+    processing_errors: int
+    last_packet_received_at: float | None
+
+
+@dataclass
+class CommunicatorStats:
+    """Counters updated by the communicator thread; safe to read from any thread through snapshot()."""
+
+    started_at: float = field(default_factory=time.time)
+    _lock: threading.Lock = field(default_factory=threading.Lock, repr=False)
+    _packets_received: Counter[PacketKind] = field(default_factory=Counter)
+    _packets_sent: Counter[PacketKind] = field(default_factory=Counter)
+    _bytes_received: int = 0
+    _bytes_sent: int = 0
+    _parse_errors: Counter[str] = field(default_factory=Counter)
+    _teach_in_responses: int = 0
+    _base_id_requests: int = 0
+    _base_id_timeouts: int = 0
+    _base_id_fetch_seconds: float | None = None
+    _transport_errors: int = 0
+    _processing_errors: int = 0
+    _last_packet_received_at: float | None = None
+
+    def record_bytes_received(self, count: int) -> None:
+        with self._lock:
+            self._bytes_received += count
+
+    def record_received(self, packet: Packet) -> None:
+        with self._lock:
+            self._packets_received[packet_kind(packet)] += 1
+            self._last_packet_received_at = time.time()
+
+    def record_sent(self, packet: Packet, byte_count: int) -> None:
+        with self._lock:
+            self._packets_sent[packet_kind(packet)] += 1
+            self._bytes_sent += byte_count
+
+    def record_parse_error(self, kind: str) -> None:
+        with self._lock:
+            self._parse_errors[kind] += 1
+
+    def record_teach_in_response(self) -> None:
+        with self._lock:
+            self._teach_in_responses += 1
+
+    def record_base_id_request(self) -> None:
+        with self._lock:
+            self._base_id_requests += 1
+
+    def record_base_id_received(self, seconds: float) -> None:
+        with self._lock:
+            self._base_id_fetch_seconds = seconds
+
+    def record_base_id_timeout(self) -> None:
+        with self._lock:
+            self._base_id_timeouts += 1
+
+    def record_transport_error(self) -> None:
+        with self._lock:
+            self._transport_errors += 1
+
+    def record_processing_error(self) -> None:
+        with self._lock:
+            self._processing_errors += 1
+
+    def snapshot(self) -> StatsSnapshot:
+        with self._lock:
+            return StatsSnapshot(
+                started_at=self.started_at,
+                packets_received=dict(self._packets_received),
+                packets_sent=dict(self._packets_sent),
+                bytes_received=self._bytes_received,
+                bytes_sent=self._bytes_sent,
+                parse_errors={kind: self._parse_errors[kind] for kind in PARSE_ERRORS},
+                teach_in_responses=self._teach_in_responses,
+                base_id_requests=self._base_id_requests,
+                base_id_timeouts=self._base_id_timeouts,
+                base_id_fetch_seconds=self._base_id_fetch_seconds,
+                transport_errors=self._transport_errors,
+                processing_errors=self._processing_errors,
+                last_packet_received_at=self._last_packet_received_at,
+            )

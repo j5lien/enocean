@@ -1,6 +1,7 @@
 import datetime
 import logging
 from collections import OrderedDict
+from collections.abc import Callable
 from typing import Any
 from xml.etree.ElementTree import Element
 
@@ -8,6 +9,11 @@ import enocean.utils
 from enocean.protocol import crc8
 from enocean.protocol.constants import DB0, DB2, DB3, DB4, DB6, PACKET, PARSE_RESULT, RORG
 from enocean.protocol.eep import EEP, FieldValue
+
+# Kinds of errors reported to Packet.parse_msg(on_error=...)
+HEADER_CRC_ERROR = 'header_crc'
+DATA_CRC_ERROR = 'data_crc'
+MALFORMED_PACKET = 'malformed'
 
 
 class Packet:
@@ -108,13 +114,16 @@ class Packet:
         self.status = enocean.utils.from_bitarray(value)
 
     @staticmethod
-    def parse_msg(buf: bytes | bytearray | list[int]) -> tuple[PARSE_RESULT, list[int], 'Packet | None']:
+    def parse_msg(
+        buf: bytes | bytearray | list[int], on_error: Callable[[str], None] | None = None
+    ) -> tuple[PARSE_RESULT, list[int], 'Packet | None']:
         """
         Parses message from buffer.
         returns:
             - PARSE_RESULT
             - remaining buffer
             - Packet -object (if message was valid, else None)
+        on_error, if given, is called with HEADER_CRC_ERROR, DATA_CRC_ERROR or MALFORMED_PACKET.
         """
         # If the buffer doesn't contain 0x55 (start char)
         # the message isn't needed -> ignore
@@ -134,6 +143,8 @@ class Packet:
         if buf[5] != crc8.calc(buf[1:5]):
             # Expected on a noisy line: every stray 0x55 lands here while resynchronizing
             Packet.logger.debug('Header CRC error, resynchronizing.')
+            if on_error:
+                on_error(HEADER_CRC_ERROR)
             # Skip only the sync byte and resynchronize on the next 0x55
             return PARSE_RESULT.CRC_MISMATCH, buf[1:], None
 
@@ -158,6 +169,8 @@ class Packet:
                 packet_type,
                 extra={'packet_type': packet_type},
             )
+            if on_error:
+                on_error(DATA_CRC_ERROR)
             # The message may be a truncated packet running into the next one: skip only the sync byte
             return PARSE_RESULT.CRC_MISMATCH, buf[1:], None
 
@@ -178,6 +191,8 @@ class Packet:
             # Valid on the wire, but too short for what its type requires: keep the raw bytes
             Packet.logger.warning('Malformed %s packet, returning it unparsed.', packet_class.__name__, exc_info=True)
             packet = Packet(packet_type, data, opt_data)
+            if on_error:
+                on_error(MALFORMED_PACKET)
 
         return PARSE_RESULT.OK, buf, packet
 
