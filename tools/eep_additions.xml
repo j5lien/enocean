@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!--
-  Profiles merged into the generated EEP.xml on top of the official specification (see tools/generate_eep.py).
+  Profiles merged into the generated enocean/protocol/profiles/ on top of the official specification (see tools/generate_eep.py).
   A profile here replaces the official one with the same RORG-FUNC-TYPE, or adds it when the specification lacks it.
   Keep the reason for each entry below.
 

@@ -14,7 +14,7 @@ with codecs.open('SUPPORTED_PROFILES.md', 'w', 'utf-8') as f_handle:
         'All profiles (should) correspond to the official [EEP](http://www.enocean-alliance.org/eep/) by EnOcean.\n\n'
     )
 
-    for telegram in eep.xml_root.iter('telegram'):
+    for telegram in eep.xml_index.iter('telegram'):
         f_handle.write('### %s (%s)\n' % (telegram.get('description'), telegram.get('rorg')))
         for func in telegram.iter('profiles'):
             # f_handle.write('#####  FUNC %s - %s\n' % (func.get('func'), func.get('description')))
@@ -24,7 +24,10 @@ with codecs.open('SUPPORTED_PROFILES.md', 'w', 'utf-8') as f_handle:
                     % (telegram.get('rorg'), func.get('func'), profile.get('type'), profile.get('description'))
                 )
 
-                for data in profile.iter('data'):
+                definition = eep.telegrams[int(telegram.get('rorg'), 16)][int(func.get('func'), 16)][
+                    int(profile.get('type'), 16)
+                ]
+                for data in definition.iter('data'):
                     header = []
 
                     if data.get('direction'):

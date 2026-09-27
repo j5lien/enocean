@@ -53,7 +53,7 @@ packages = ["enocean", "enocean.protocol", "enocean.communicators"]
 
 [tool.setuptools.package-data]
 "enocean" = ["py.typed"]
-"enocean.protocol" = ["EEP.xml"]
+"enocean.protocol" = ["profiles/*.xml"]
 
 [tool.pytest.ini_options]
 testpaths = ["enocean", "hardware_tests"]
