@@ -317,7 +317,7 @@ All profiles (should) correspond to the official [EEP](http://www.enocean-allian
 |shortcut|description                                       |type    |values                                                                |
 |--------|--------------------------------------------------|--------|----                                                                  |
 |HUM     |Rel. Humidity (linear)                            |value   |0.0-250.0 ↔ 0.0-100.0 %                                               |
-|TMP     |Temperature (linear)                              |value   |0.0-255.0 ↔ -20.0-60.0 °C                                             |
+|TMP     |Temperature (linear)                              |value   |0.0-250.0 ↔ -20.0-60.0 °C                                             |
 |LRNB    |Learn Bit                                         |enum    |0 - Teach-In                                                          |
 |        |                                                  |        |1 - Data                                                              |
 |TSN     |Availability of the Temperature Sensor            |enum    |0 - not available                                                     |

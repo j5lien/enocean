@@ -19,7 +19,7 @@ Bugs :
 - [ ] `SerialCommunicator` n'accepte pas `teach_in` (le sniffer le modifie après `start()`, avec une course possible)
       et son port par défaut est `/dev/ttyAMA0` (UART de Raspberry Pi)
 - [ ] Setter de `base_id` documenté « only for testing purposes » alors qu'il a des usages réels
-- [ ] A5-04-02 : plage brute de la température à 0..255 au lieu de 0..250 (à confirmer avec la spec EEP)
+- [x] A5-04-02 : plage brute de la température corrigée (0..250, confirmé par la spec EEP 2.6.7)
 - [ ] `TCPCommunicator` est en réception seule (`send()` sans effet, réponses teach-in non transmises) et ne sert
       qu'un client à la fois : à revoir si un usage bidirectionnel est souhaité
 
