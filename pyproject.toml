@@ -64,6 +64,9 @@ show_missing = true
 line-length = 120
 target-version = "py310"
 
+[tool.ruff.format]
+quote-style = "single"
+
 [tool.ruff.lint]
 select = ["E", "W", "F", "C90"]
 

@@ -24,7 +24,9 @@ jobs:
       - name: Check lockfile is up to date
         run: uv lock --check
       - name: Ruff
-        run: uv run --locked ruff check --output-format=github enocean
+        run: |
+          uv run --locked ruff check --output-format=github
+          uv run --locked ruff format --check
       - name: Check SUPPORTED_PROFILES.md is up to date with EEP.xml
         run: |
           uv run --locked python generate_supported_profiles.py

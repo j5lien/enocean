@@ -1,4 +1,3 @@
-
 from enocean.communicators import Communicator
 from enocean.decorators import timing
 from enocean.protocol.constants import DB6, RORG
@@ -10,6 +9,7 @@ def test_ute_in():
     communicator = Communicator()
     communicator.base_id = [0xDE, 0xAD, 0xBE, 0xEF]
 
+    # fmt: off
     status, buf, packet = Packet.parse_msg(
         bytearray([
             0x55,
@@ -20,6 +20,7 @@ def test_ute_in():
             0xAB
         ])
     )
+    # fmt: on
 
     assert packet.sender_hex == '01:94:E3:B9'
     assert packet.unidirectional is False
@@ -38,5 +39,5 @@ def test_ute_in():
     response_packet = packet.create_response_packet(communicator.base_id)
     assert response_packet.sender_hex == 'DE:AD:BE:EF'
     assert response_packet.destination_hex == '01:94:E3:B9'
-    assert response_packet._bit_data[DB6.BIT_5:DB6.BIT_3] == [False, True]
+    assert response_packet._bit_data[DB6.BIT_5 : DB6.BIT_3] == [False, True]
     assert response_packet.data[2:7] == packet.data[2:7]
