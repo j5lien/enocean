@@ -16,11 +16,8 @@ Remise à niveau du fork `j5lien/enocean`. Cocher au fur et à mesure.
 
 ## Bugs
 
-- [ ] `Communicator.base_id` : bloque jusqu'à 1 s, et vide puis remplit à nouveau la queue `receive`
-      (réordonne les paquets reçus pendant l'attente)
-- [ ] `SerialCommunicator` : une `SerialException` à l'écriture arrête le thread sans rien logger
-- [ ] `TCPCommunicator` : ignore la queue d'envoi (`send()` sans effet), n'accepte ni `callback` ni `teach_in`,
-      ne parse qu'à la déconnexion du client ou après 0,5 s d'inactivité
+- [ ] `TCPCommunicator` est en réception seule (`send()` sans effet, réponses teach-in non transmises) et ne sert
+      qu'un client à la fois ; à revoir si un usage bidirectionnel est souhaité
 
 ## Montées de version / modernisation
 
@@ -62,3 +59,7 @@ Remise à niveau du fork `j5lien/enocean`. Cocher au fur et à mesure.
       supprimée, décodage identique (snapshot), chargement 20× plus rapide, plus aucun warning
 - [x] Restes de Python 2 supprimés (dont la dépendance `enum-compat`), `ruff format` appliqué, règles ruff
       `I`/`UP`/`B`/`SIM`, lint étendu aux exemples et au générateur
+- [x] `base_id` : plus de vidage/réordonnancement de la queue, fonctionne en mode callback ; teach-in UTE reçu avant
+      que le base ID soit connu : le base ID est demandé puis la réponse envoyée (avant : blocage 1 s du thread,
+      `TypeError`, paquet perdu) ; `TCPCommunicator` accepte `callback`/`teach_in` et livre les paquets au fil de
+      l'eau ; erreur d'écriture série loggée
