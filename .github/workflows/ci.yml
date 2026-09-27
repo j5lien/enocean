@@ -29,6 +29,10 @@ jobs:
           uv run --locked ruff format --check
       - name: Mypy
         run: uv run --locked mypy
+      - name: Check EEP.xml is generated from the official specification
+        run: |
+          uv run --locked python tools/generate_eep.py
+          git diff --exit-code enocean/protocol/EEP.xml || (echo "::error::Run 'make eep' and commit EEP.xml" && exit 1)
       - name: Check SUPPORTED_PROFILES.md is up to date with EEP.xml
         run: |
           uv run --locked python generate_supported_profiles.py

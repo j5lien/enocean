@@ -9,6 +9,16 @@ Towards 2.0.0: fixes and removal of deprecated APIs, before reworking the public
 
 ### Breaking changes
 
+- `EEP.xml` is generated from the official EnOcean Alliance specification (EEP 2.6.8): field shortcuts and value
+  descriptions are the official ones. Renamed shortcuts in previously supported profiles: A5-07-01 `PIR` → `PIRS`,
+  A5-09-06 `ACT` → `Act`, A5-09-07 `PM2.5`/`PM2.5a` → `PM25`/`PM25a`, A5-09-0C `CONC` → `Conc`, A5-11-02 `CTS` → `CST`,
+  D2-01-xx `DE`/`DN`/`EP`/`QU`/`MDLSB`/`MDMSB` → `de`/`dn`/`ep`/`qu`/`MD_LSB`/`MD_MSB`, F6-02-04 `EB`/`RAO`/`RBO` →
+  `EBO`/`RA0`/`RB0`. 4BS and 1BS profiles now decode their learn bit (`LRNB`, `LRN`). Enum descriptions changed (e.g.
+  `'Button AI'` → `'Button AI: "Switch light on" or ...'`; ranges read `'Output channel (to load): 1'`); `create()`
+  still accepts the short label before the colon. Some enum ranges decode to numbers (e.g. D2-05 `POS`: 50.0 %).
+- Decoding aligned with the specification: A5-20-01 direction 2 `TMP` scale was inverted, A5-38-08 `EDIM` is a
+  percentage (was the raw value), A5-13-01 only covers weather station telegrams with identifier 1 (the others are
+  A5-13-02 to A5-13-06), F6-02-xx telegrams without the NU bit use the spec's "released / several buttons" variant.
 - `SerialCommunicator` requires its `port` (the default was `/dev/ttyAMA0`, a Raspberry Pi UART).
 - `packet.received` is a timezone-aware UTC datetime, set by `Packet.parse_msg()` (was a naive local datetime set by
   the communicator); comparing it with naive datetimes raises `TypeError`.
@@ -27,6 +37,10 @@ Towards 2.0.0: fixes and removal of deprecated APIs, before reworking the public
 
 ### Added
 
+- 270 profiles, generated from the official specification (205 more than before), with `make eep`; profiles
+  missing from or unusable in the spec kept in `tools/eep_additions.xml` (D2-14-30, D2-14-41, F6-10-00, F6-10-01).
+- Profile variants selected by conditions on data or status bits (e.g. F6-02-02 by T21/NU, D2-01 extended commands by
+  ECID), and enum ranges carrying a scale.
 - `packet.to_dict()`: JSON-serializable view of a packet (hex IDs, enum names that don't raise on unknown values,
   ISO reception time, EEP and decoded values).
 - `EEPId` (`EEPId.parse('D2-01-12')`), `packet.eep_id` and `packet.command`: the profile and command variant applied.
@@ -46,6 +60,9 @@ Towards 2.0.0: fixes and removal of deprecated APIs, before reworking the public
 
 ### Fixed
 
+- F6-10-00 window handle position read the right bits with wrong labels (now: horizontal/open, up/tilted,
+  down/closed).
+- `create(command=0)` ignored the command.
 - UTE teach-in: deletion requests were answered as accepted teach-ins; they are now answered as deletions (as are
   non-specific requests from devices already known), and requests for profiles unknown to `EEP.xml` are refused.
 - Profiles with several commands (e.g. D2-01-12, D2-05-00): decoding without `command=` picks the variant the
