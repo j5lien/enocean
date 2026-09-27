@@ -38,10 +38,14 @@ Serial e2e tests are skipped on Windows (no pty). An unhandled exception in a co
 (`filterwarnings` in `pyproject.toml`).
 Lint rules (ruff: E/W/F/C90, line length 120, max complexity 15) live in `pyproject.toml`.
 
-Regenerate `SUPPORTED_PROFILES.md` from `EEP.xml` after changing the EEP definitions:
+After changing `EEP.xml`:
 ```bash
-uv run python generate_supported_profiles.py
+make profiles      # regenerate SUPPORTED_PROFILES.md (CI fails if it is stale)
+UPDATE_EEP_SNAPSHOT=1 uv run pytest enocean/protocol/tests/test_eep_profiles.py   # if decoding changed on purpose
 ```
+`test_eep_profiles.py` validates every profile in `EEP.xml` (fields fit and don't overlap, enum values fit their
+bits, VLD `<data>` declares `bits`), round-trips every enum/value through `RadioPacket.create()`, and compares the
+decoding of fixed bit patterns against `eep_snapshot.json`: review the snapshot diff when regenerating it.
 
 There's no build step; it's a pure-Python package (`uv build` produces sdist/wheel).
 

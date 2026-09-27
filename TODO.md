@@ -8,10 +8,9 @@ Remise à niveau du fork `j5lien/enocean`. Cocher au fur et à mesure.
 
 ## Tests
 
-- [ ] Une trame de référence par profil EEP (29/65 profils testés aujourd'hui), en commençant par les D2
-      ajoutés en 2022 (D2-01-12, D2-14-30, …) — table de trames + valeurs attendues, tests paramétrés
-- [ ] Tests aller-retour `RadioPacket.create()` → `parse_msg()` → `parse_eep()` pour chaque profil supporté
-- [ ] Seuil de couverture minimum en CI (`--cov-fail-under`)
+- [ ] Trames réelles capturées sur tes appareils (D2-01-12, D2-14-30, D2-14-41, …) avec les valeurs affichées par
+      l'appareil, pour valider le décodage contre la réalité (les tests actuels vérifient la cohérence d'`EEP.xml`
+      et figent le décodage, pas sa conformité à la spec)
 - [ ] Décider du sort des tests `@timing` (inactifs sans `WITH_TIMINGS=1`) : les supprimer ou passer à `pytest-benchmark`
 - [ ] Couvrir `consolelogger.py` (0 %) ou le supprimer s'il ne sert qu'aux exemples
 
@@ -35,7 +34,6 @@ Remise à niveau du fork `j5lien/enocean`. Cocher au fur et à mesure.
 - [ ] Annotations de type + `mypy` en CI + `py.typed`
 - [ ] Remplacer `script-files` (déprécié) par un point d'entrée `[project.scripts]`, vérifier que les exemples
       fonctionnent encore
-- [ ] Vérifier en CI que `SUPPORTED_PROFILES.md` est à jour par rapport à `EEP.xml`
 - [ ] Hooks `pre-commit` (ruff, lock uv)
 
 ## Documentation / métadonnées
@@ -62,3 +60,6 @@ Remise à niveau du fork `j5lien/enocean`. Cocher au fur et à mesure.
 - [x] Tests de robustesse du parseur (`hypothesis`) ; resynchronisation ESP3 corrigée (CRC d'en-tête vérifié avant
       d'attendre la longueur annoncée, seul le `0x55` est sauté en cas d'erreur) ; trames radio sans données
       optionnelles acceptées ; trames trop courtes renvoyées brutes au lieu de lever une exception
+- [x] Tests sur tous les profils EEP (structure, aller-retour create/parse, snapshot du décodage) ; corrections
+      dans `EEP.xml` (D2-01-12 : enums en binaire, plages trop larges ; D2-14-30/41 : `bits` manquant) ; décodage
+      des télégrammes tronqués ; `SUPPORTED_PROFILES.md` régénéré et vérifié en CI ; seuil de couverture 90 %

@@ -1940,11 +1940,11 @@
           </enum>
           <enum description="Dim timer 2" shortcut="DT2" offset="16" size="4">
             <item description="Not used" value="0" />
-            <rangeitem description="Dim timer 2 0.5s" start="1" end="255" />
+            <rangeitem description="Dim time {value} x 0.5s" start="1" end="15" />
           </enum>
           <enum description="Dim timer 3" shortcut="DT3" offset="20" size="4">
             <item description="Not used" value="0" />
-            <rangeitem description="Dim timer 2 0.5s" start="1" end="255" />
+            <rangeitem description="Dim time {value} x 0.5s" start="1" end="15" />
           </enum>
           <enum description="User interface indication" shortcut="DN" offset="24" size="1">
             <item description="Day Operation" value="0" />
@@ -1957,12 +1957,12 @@
           <enum description="Default State" shortcut="DS" offset="26" size="2">
             <item description="Default state: 0% or OFF" value="0" />
             <item description="Default state: 100% or ON" value="1" />
-            <item description="Remember Last State" value="10" />
-            <item description="Not used" value="11" />
+            <item description="Remember Last State" value="2" />
+            <item description="Not used" value="3" />
           </enum>
           <enum description="Dim timer 1" shortcut="DT1" offset="28" size="4">
             <item description="Not used" value="0" />
-            <rangeitem description="Dim timer 2 0.5s" start="1" end="255" />
+            <rangeitem description="Dim time {value} x 0.5s" start="1" end="15" />
           </enum>
         </data>
         <data command="3" bits="2">
@@ -1999,11 +1999,11 @@
           <value description="Measurement delta to be reported (LSB)" shortcut="MDLSB" offset="16" size="4" unit="">
             <range>
               <min>0</min>
-              <max>4095</max>
+              <max>15</max>
             </range>
             <scale>
               <min>0</min>
-              <max>4095</max>
+              <max>15</max>
             </scale>
           </value>
           <enum description="Unit" shortcut="UN" offset="21" size="3">
@@ -2016,11 +2016,11 @@
           <value description="Measurement delta to be reported (MSB)" shortcut="MDMSB" offset="24" size="8" unit="">
             <range>
               <min>0</min>
-              <max>4095</max>
+              <max>255</max>
             </range>
             <scale>
               <min>0</min>
-              <max>4095</max>
+              <max>255</max>
             </scale>
           </value>
           <value description="Maximum time between two subsequent actuator messages" shortcut="MAT" offset="32" size="8" unit="s">
@@ -2138,8 +2138,8 @@
           <enum description="External Switch/Push Button" shortcut="EBM" offset="48" size="2">
             <item description="Not applicable" value="0" />
             <item description="External Switch" value="1" />
-            <item description="External Push Button" value="10" />
-            <item description="Auto detect" value="11" />
+            <item description="External Push Button" value="2" />
+            <item description="Auto detect" value="3" />
           </enum>
           <enum description="2-state switch" shortcut="SWT" offset="50" size="1">
             <item description="Change of key state sets ON or OFF" value="0" />
@@ -2178,8 +2178,8 @@
           <enum description="External Switch/Push Button" shortcut="EBM" offset="48" size="2">
             <item description="Not applicable" value="0" />
             <item description="External Switch" value="1" />
-            <item description="External Push Button" value="10" />
-            <item description="Auto detect" value="11" />
+            <item description="External Push Button" value="2" />
+            <item description="Auto detect" value="3" />
           </enum>
           <enum description="2-state switch" shortcut="SWT" offset="50" size="1">
             <item description="Change of key state sets ON or OFF" value="0" />
@@ -2281,7 +2281,7 @@
     </profiles>
     <profiles func="0x14" description="Multi Function Sensors">
       <profile type="0x41" description="Indoor -Temperature, Humidity XYZ Acceleration, Illumination Sensor">
-        <data>
+        <data bits="9">
           <value description="Temperature 10" shortcut="TMP" offset="0" size="10" unit="°C">
             <range>
               <min>0</min>
@@ -2354,7 +2354,7 @@
         </data>
       </profile>
       <profile type="0x30" description="Smoke Alarm Humidity Temperature Confort Air">
-        <data>
+        <data bits="6">
           <enum description="Smoke Alarm status" shortcut="SMAS" offset="0" size="1">
             <item description="Smoke Alarm non-activated" value="0" />
             <item description="Smoke Alarm activated" value="1" />
