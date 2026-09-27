@@ -58,7 +58,8 @@ turn_off([0x01, 0x94, 0xE3, 0xB9])
 
 
 print(
-    'Press and hold the teach-in button on the plug now, till it starts turning itself off and on (about 10 seconds or so...)'
+    'Press and hold the teach-in button on the plug now, till it starts turning itself off and on '
+    '(about 10 seconds or so...)'
 )
 devices_learned = []
 

@@ -19,7 +19,7 @@ def timing(rounds=1, limit=None):
                 duration = time.time() - start
             else:
                 start = time.time()
-                for i in range(rounds):
+                for _ in range(rounds):
                     method()
                 duration = (time.time() - start) / rounds
             # Use milliseconds for duration counter

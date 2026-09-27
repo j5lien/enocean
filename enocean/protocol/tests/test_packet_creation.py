@@ -372,23 +372,11 @@ def test_vld():
 
 
 def test_fails():
-    try:
+    with pytest.raises(ValueError):
         Packet.create(PACKET.RESPONSE, 0xA5, 0x01, 0x01)
-        assert False
-    except ValueError:
-        assert True
-    try:
+    with pytest.raises(ValueError):
         Packet.create(PACKET.RADIO_ERP1, 0xA6, 0x01, 0x01)
-        assert False
-    except ValueError:
-        assert True
-    try:
+    with pytest.raises(ValueError):
         Packet.create(PACKET.RADIO_ERP1, 0xA5, 0x01, 0x01, destination='ASDASDASD')
-        assert False
-    except ValueError:
-        assert True
-    try:
+    with pytest.raises(ValueError):
         Packet.create(PACKET.RADIO_ERP1, 0xA5, 0x01, 0x01, sender='ASDASDASD')
-        assert False
-    except ValueError:
-        assert True

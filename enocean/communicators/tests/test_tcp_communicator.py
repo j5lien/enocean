@@ -6,12 +6,12 @@ clients push ESP3 frames to it over real sockets, as examples/serial_to_tcp.py d
 import socket
 import time
 
-from conftest import BASE_ID_RESPONSE_FRAME, RADIO_FRAME, TIMEOUT
-
 from enocean.communicators.tcpcommunicator import TCPCommunicator
 from enocean.communicators.utils import send_to_tcp_socket
 from enocean.protocol.constants import PACKET
 from enocean.protocol.packet import Packet, RadioPacket
+
+from conftest import BASE_ID_RESPONSE_FRAME, RADIO_FRAME, TIMEOUT
 
 
 def connect(port):

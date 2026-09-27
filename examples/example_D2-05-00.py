@@ -8,7 +8,6 @@ Waits for UTE Teach-ins, sends the response automatically and prints the ID of n
 
 import queue
 import sys
-import time
 import traceback
 
 import enocean.utils
@@ -43,7 +42,8 @@ set_position([0x05, 0x0F, 0x0B, 0xEA], 50)
 
 
 print(
-    'Press and hold the teach-in button on the plug now, till it starts turning itself off and on (about 10 seconds or so...)'
+    'Press and hold the teach-in button on the plug now, till it starts turning itself off and on '
+    '(about 10 seconds or so...)'
 )
 devices_learned = []
 

@@ -10,11 +10,12 @@ import threading
 import time
 
 import pytest
-from conftest import BASE_ID_RESPONSE_FRAME, RADIO_FRAME, TIMEOUT, UTE_TEACH_IN_FRAME
 
 from enocean.communicators.serialcommunicator import SerialCommunicator
 from enocean.protocol.constants import PACKET, RORG
 from enocean.protocol.packet import Packet, RadioPacket, UTETeachInPacket
+
+from conftest import BASE_ID_RESPONSE_FRAME, RADIO_FRAME, TIMEOUT, UTE_TEACH_IN_FRAME
 
 
 def test_radio_frame_is_received_and_decoded(pty_port, running):

@@ -6,6 +6,7 @@ slave side as its serial port, while tests act as the radio module on the master
 ESP3 frames in and reading what the communicator writes out.
 """
 
+import contextlib
 import os
 import select
 import socket
@@ -100,10 +101,8 @@ def pty_port():
         yield FakeSerialModule(master), os.ttyname(slave)
     finally:
         os.close(slave)
-        try:
+        with contextlib.suppress(OSError):
             os.close(master)
-        except OSError:
-            pass
 
 
 @pytest.fixture

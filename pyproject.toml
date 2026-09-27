@@ -68,7 +68,13 @@ target-version = "py310"
 quote-style = "single"
 
 [tool.ruff.lint]
-select = ["E", "W", "F", "C90"]
+select = ["E", "W", "F", "C90", "I", "UP", "B", "SIM"]
+# printf-style formatting is kept (also what logging uses)
+ignore = ["UP031"]
+
+[tool.ruff.lint.isort]
+known-first-party = ["enocean"]
+known-local-folder = ["conftest"]
 
 [tool.ruff.lint.mccabe]
 max-complexity = 15
