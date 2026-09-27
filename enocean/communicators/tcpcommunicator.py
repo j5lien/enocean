@@ -9,7 +9,8 @@ from enocean.protocol.packet import Packet
 class TCPCommunicator(Communicator):
     """
     TCP server receiving ESP3 packets from clients, e.g. a serial-to-TCP bridge (see examples/serial_to_tcp.py).
-    Receive-only: packets passed to send() (including UTE teach-in responses) are not transmitted anywhere.
+    Receive-only: packets passed to send() (including UTE teach-in responses) are not transmitted anywhere. Clients are
+    served one at a time.
     """
 
     logger = logging.getLogger('enocean.communicators.TCPCommunicator')
