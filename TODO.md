@@ -24,10 +24,6 @@ Remise à niveau du fork `j5lien/enocean`. Cocher au fur et à mesure.
 
 ## Opérabilité
 
-- [ ] Métriques Prometheus faciles à activer, sans imposer de dépendance à ceux qui n'en veulent pas :
-      compteurs internes toujours disponibles (ex. `communicator.stats`), et un adaptateur `prometheus_client`
-      optionnel (extra `enocean[prometheus]`) qui les expose, avec préfixe/labels configurables et
-      l'enregistrement dans un registry fourni par l'appelant
 - [ ] Métriques candidates : paquets reçus/envoyés par type de paquet et RORG, octets lus, erreurs CRC
       (en-tête/données) et resynchronisations, paquets malformés, taille des queues `receive`/`transmit`,
       réponses teach-in envoyées, durée et échecs de récupération du base ID, déconnexions du port série,
@@ -71,3 +67,5 @@ Remise à niveau du fork `j5lien/enocean`. Cocher au fur et à mesure.
 - [x] Logs : niveaux revus (bruit radio en DEBUG, télégramme corrompu en WARNING, traces complètes des erreurs de
       callback), `NullHandler`, champs structurés (`packet_type`, `rorg`, `sender`, `dbm`), `init_logging(json_format=True)`
 - [x] Statistiques internes (`communicator.stats`) et santé (`communicator.health()`), sans dépendance
+- [x] Adaptateur Prometheus optionnel (`enocean[prometheus]`, `enocean.prometheus.register()`) : namespace, labels
+      constants, registry et plusieurs communicators configurables
