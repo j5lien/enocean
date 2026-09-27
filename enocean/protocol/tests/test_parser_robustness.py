@@ -1,13 +1,14 @@
-# -*- encoding: utf-8 -*-
-'''
+"""
 Property-based tests for the ESP3 stream parser: whatever bytes come off the serial line (radio noise,
 truncated or corrupted frames, arbitrary packet contents), parsing must never raise, must always make
 progress, and must recover every valid frame that follows the garbage.
-'''
+"""
+
 import logging
 import os
 
-from hypothesis import HealthCheck, assume, given, settings, strategies as st
+from hypothesis import HealthCheck, assume, given, settings
+from hypothesis import strategies as st
 
 from enocean.communicators.communicator import Communicator
 from enocean.protocol import crc8
@@ -34,7 +35,7 @@ def frame(packet_type, data, optional):
 
 @st.composite
 def any_frames(draw):
-    ''' CRC-valid frames with arbitrary type and contents, including ones too short for their type. '''
+    """CRC-valid frames with arbitrary type and contents, including ones too short for their type."""
     packet_type = draw(st.sampled_from(PACKET_TYPES) | st.integers(0, 255))
     data = draw(st.lists(st.integers(0, 255), max_size=20))
     if packet_type == PACKET.RADIO_ERP1 and data and draw(st.booleans()):
@@ -45,7 +46,7 @@ def any_frames(draw):
 
 @st.composite
 def radio_frames(draw):
-    ''' Well-formed ERP1 radio telegrams, as a real module sends them. '''
+    """Well-formed ERP1 radio telegrams, as a real module sends them."""
     rorg, payload_len = draw(st.sampled_from([(RORG.RPS, 1), (RORG.BS1, 1), (RORG.BS4, 4), (RORG.VLD, 6)]))
     payload = draw(st.lists(st.integers(0, 255), min_size=payload_len, max_size=payload_len))
     sender = draw(st.lists(st.integers(0, 255), min_size=4, max_size=4))
@@ -56,19 +57,22 @@ def radio_frames(draw):
 
 
 def corrupted_header():
-    ''' A sync byte followed by a header whose CRC doesn't match (e.g. bit errors on the line). '''
+    """A sync byte followed by a header whose CRC doesn't match (e.g. bit errors on the line)."""
     no_sync = st.integers(0, 255).filter(lambda b: b != 0x55)
-    return st.lists(no_sync, min_size=5, max_size=5).filter(
-        lambda h: crc8.calc(h[:4]) != h[4]).map(lambda h: bytes([0x55] + h))
+    return (
+        st.lists(no_sync, min_size=5, max_size=5)
+        .filter(lambda h: crc8.calc(h[:4]) != h[4])
+        .map(lambda h: bytes([0x55] + h))
+    )
 
 
 def noise():
-    ''' Random bytes containing no sync byte. '''
+    """Random bytes containing no sync byte."""
     return st.binary(max_size=30).map(lambda b: b.replace(b'\x55', b''))
 
 
 def parse_stream(chunks):
-    ''' Feeds chunks through a Communicator as a transport would, returns the packets it produced. '''
+    """Feeds chunks through a Communicator as a transport would, returns the packets it produced."""
     com = Communicator(teach_in=False)
     for chunk in chunks:
         com._buffer.extend(chunk)
@@ -108,7 +112,7 @@ def test_communicator_parse_terminates_on_any_stream(chunks):
 def test_valid_frames_survive_arbitrary_chunking(frames, data):
     stream = b''.join(frames)
     cuts = sorted(data.draw(st.lists(st.integers(0, len(stream)), max_size=10)))
-    chunks = [stream[a:b] for a, b in zip([0] + cuts, cuts + [len(stream)])]
+    chunks = [stream[a:b] for a, b in zip([0] + cuts, cuts + [len(stream)], strict=True)]
 
     packets = parse_stream(chunks)
 
@@ -127,14 +131,14 @@ def test_resync_after_noise_and_corrupted_headers(segments):
 
 @given(radio_frames(), st.lists(radio_frames(), min_size=1, max_size=3), st.data())
 def test_resync_after_truncated_frame(truncated, frames, data):
-    ''' Bytes lost mid-frame: the broken frame runs into the next ones, which must still be recovered. '''
+    """Bytes lost mid-frame: the broken frame runs into the next ones, which must still be recovered."""
     cut = data.draw(st.integers(6, len(truncated) - 1))
     stream = truncated[:cut] + b''.join(frames)
     # Streams that are ambiguous by design, as CRC8 lets 1 in 256 corruptions through: the truncated
     # remains contain another sync byte, or the bytes the broken header claims happen to pass the data CRC.
     assume(0x55 not in truncated[1:cut])
     claimed_len = 6 + ((stream[1] << 8) | stream[2]) + stream[3] + 1
-    assume(claimed_len > len(stream) or stream[claimed_len - 1] != crc8.calc(stream[6:claimed_len - 1]))
+    assume(claimed_len > len(stream) or stream[claimed_len - 1] != crc8.calc(stream[6 : claimed_len - 1]))
 
     packets = parse_stream([stream])
 

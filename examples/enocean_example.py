@@ -1,25 +1,19 @@
 #!/usr/bin/env python
-# -*- encoding: utf-8 -*-
-from enocean.consolelogger import init_logging
-import enocean.utils
-from enocean.communicators.serialcommunicator import SerialCommunicator
-from enocean.protocol.packet import RadioPacket
-from enocean.protocol.constants import PACKET, RORG
+import queue
 import sys
 import traceback
 
-try:
-    import queue
-except ImportError:
-    import Queue as queue
+import enocean.utils
+from enocean.communicators.serialcommunicator import SerialCommunicator
+from enocean.consolelogger import init_logging
+from enocean.protocol.constants import PACKET, RORG
+from enocean.protocol.packet import RadioPacket
 
 
 def assemble_radio_packet(transmitter_id):
-    return RadioPacket.create(rorg=RORG.BS4, rorg_func=0x20, rorg_type=0x01,
-                              sender=transmitter_id,
-                              CV=50,
-                              TMP=21.5,
-                              ES='true')
+    return RadioPacket.create(
+        rorg=RORG.BS4, rorg_func=0x20, rorg_type=0x01, sender=transmitter_id, CV=50, TMP=21.5, ES='true'
+    )
 
 
 init_logging()

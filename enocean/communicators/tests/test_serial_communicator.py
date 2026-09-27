@@ -1,17 +1,13 @@
-# -*- encoding: utf-8 -*-
-'''
+"""
 End-to-end tests for SerialCommunicator: the real communicator thread talks to a pseudo-terminal
 acting as the EnOcean module (see conftest.py), so the whole path from raw serial bytes to decoded
 packets (and from send() to bytes on the wire) is exercised.
-'''
+"""
+
 import os
+import queue
 import threading
 import time
-
-try:
-    import queue
-except ImportError:
-    import Queue as queue
 
 import pytest
 
@@ -106,8 +102,9 @@ def test_exception_in_callback_does_not_kill_communicator(pty_port, running):
 def test_sent_packet_is_written_to_serial(pty_port, running):
     module, port = pty_port
     com = running(SerialCommunicator(port=port))
-    packet = RadioPacket.create(rorg=RORG.RPS, rorg_func=0x02, rorg_type=0x02,
-                                sender=[0xDE, 0xAD, 0xBE, 0xEF], R1='Button AI', EB='pressed')
+    packet = RadioPacket.create(
+        rorg=RORG.RPS, rorg_func=0x02, rorg_type=0x02, sender=[0xDE, 0xAD, 0xBE, 0xEF], R1='Button AI', EB='pressed'
+    )
 
     assert com.send(packet)
 

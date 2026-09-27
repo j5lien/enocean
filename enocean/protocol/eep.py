@@ -1,16 +1,15 @@
-# -*- encoding: utf-8 -*-
-from __future__ import print_function, unicode_literals, division, absolute_import
-import os
 import logging
+import os
 from collections import OrderedDict
 from xml.etree import ElementTree
 
 import enocean.utils
+
 # Left as a helper
 from enocean.protocol.constants import RORG  # noqa: F401
 
 
-class EEP(object):
+class EEP:
     logger = logging.getLogger('enocean.protocol.eep')
 
     def __init__(self):
@@ -22,7 +21,7 @@ class EEP(object):
             self.xml_root = ElementTree.parse(eep_path).getroot()
             self.init_ok = True
             self.__load_xml()
-        except (IOError, ElementTree.ParseError):
+        except (OSError, ElementTree.ParseError):
             # Impossible to test with the current structure?
             # To be honest, as the XML is included with the library,
             # there should be no possibility of ever reaching this...
@@ -33,8 +32,7 @@ class EEP(object):
         self.telegrams = {
             enocean.utils.from_hex_string(telegram.get('rorg')): {
                 enocean.utils.from_hex_string(function.get('func')): {
-                    enocean.utils.from_hex_string(type.get('type')): type
-                    for type in function.iter('profile')
+                    enocean.utils.from_hex_string(type.get('type')): type for type in function.iter('profile')
                 }
                 for function in telegram.iter('profiles')
             }
@@ -43,7 +41,7 @@ class EEP(object):
 
     @staticmethod
     def _find_child(source, tag, **attributes):
-        ''' First child element with the given tag and attribute values (compared as strings), or None. '''
+        """First child element with the given tag and attribute values (compared as strings), or None."""
         for child in source.findall(tag):
             if all(child.get(name) == str(value) for name, value in attributes.items()):
                 return child
@@ -51,7 +49,7 @@ class EEP(object):
 
     @staticmethod
     def _get_raw(source, bitarray):
-        ''' Get raw data as integer, based on offset and size '''
+        """Get raw data as integer, based on offset and size"""
         offset = int(source.get('offset'))
         size = int(source.get('size'))
         length = len(bitarray)
@@ -64,11 +62,11 @@ class EEP(object):
 
     @staticmethod
     def _set_raw(target, raw_value, bitarray):
-        ''' put value into bit array '''
+        """put value into bit array"""
         offset = int(target.get('offset'))
         size = int(target.get('size'))
         for digit in range(size):
-            bitarray[offset+digit] = (raw_value >> (size-digit-1)) & 0x01 != 0
+            bitarray[offset + digit] = (raw_value >> (size - digit - 1)) & 0x01 != 0
         return bitarray
 
     @staticmethod
@@ -78,7 +76,7 @@ class EEP(object):
                 return rangeitem
 
     def _get_value(self, source, bitarray):
-        ''' Get value, based on the data in XML '''
+        """Get value, based on the data in XML"""
         raw_value = self._get_raw(source, bitarray)
 
         rng = source.find('range')
@@ -99,7 +97,7 @@ class EEP(object):
         }
 
     def _get_enum(self, source, bitarray):
-        ''' Get enum value, based on the data in XML '''
+        """Get enum value, based on the data in XML"""
         raw_value = self._get_raw(source, bitarray)
 
         # Find value description.
@@ -111,26 +109,29 @@ class EEP(object):
             source.get('shortcut'): {
                 'description': source.get('description'),
                 'unit': source.get('unit', ''),
-                'value': (value_desc.get('description').format(value=raw_value)
-                          if value_desc is not None and value_desc.get('description') else ''),
+                'value': (
+                    value_desc.get('description').format(value=raw_value)
+                    if value_desc is not None and value_desc.get('description')
+                    else ''
+                ),
                 'raw_value': raw_value,
             }
         }
 
     def _get_boolean(self, source, bitarray):
-        ''' Get boolean value, based on the data in XML '''
+        """Get boolean value, based on the data in XML"""
         raw_value = self._get_raw(source, bitarray)
         return {
             source.get('shortcut'): {
                 'description': source.get('description'),
                 'unit': source.get('unit', ''),
-                'value': True if raw_value else False,
+                'value': bool(raw_value),
                 'raw_value': raw_value,
             }
         }
 
     def _set_value(self, target, value, bitarray):
-        ''' set given numeric value to target field in bitarray '''
+        """set given numeric value to target field in bitarray"""
         # derive raw value
         rng = target.find('range')
         rng_min = float(rng.find('min').text)
@@ -143,12 +144,14 @@ class EEP(object):
         return self._set_raw(target, int(raw_value), bitarray)
 
     def _set_enum(self, target, value, bitarray):
-        ''' set given enum value (by string or integer value) to target field in bitarray '''
+        """set given enum value (by string or integer value) to target field in bitarray"""
         # derive raw value
         if isinstance(value, int):
             # check whether this value exists
-            if self._find_child(target, 'item', value=value) is not None \
-                    or self._get_rangeitem(target, value) is not None:
+            if (
+                self._find_child(target, 'item', value=value) is not None
+                or self._get_rangeitem(target, value) is not None
+            ):
                 # set integer values directly
                 raw_value = value
             else:
@@ -162,27 +165,28 @@ class EEP(object):
 
     @staticmethod
     def _set_boolean(target, data, bitarray):
-        ''' set given value to target bit in bitarray '''
+        """set given value to target bit in bitarray"""
         bitarray[int(target.get('offset'))] = data
         return bitarray
 
     def find_profile(self, bitarray, eep_rorg, rorg_func, rorg_type, direction=None, command=None):
-        ''' Find profile and data description, matching RORG, FUNC and TYPE '''
+        """Find profile and data description, matching RORG, FUNC and TYPE"""
         if not self.init_ok:
             self.logger.warning('EEP.xml not loaded!')
             return None
 
-        if eep_rorg not in self.telegrams.keys():
+        if eep_rorg not in self.telegrams:
             self.logger.warning('Cannot find rorg %s in EEP!', hex(eep_rorg))
             return None
 
-        if rorg_func not in self.telegrams[eep_rorg].keys():
+        if rorg_func not in self.telegrams[eep_rorg]:
             self.logger.warning('Cannot find rorg %s func %s in EEP!', hex(eep_rorg), hex(rorg_func))
             return None
 
-        if rorg_type not in self.telegrams[eep_rorg][rorg_func].keys():
-            self.logger.warning('Cannot find rorg %s func %s type %s in EEP!',
-                             hex(eep_rorg), hex(rorg_func), hex(rorg_type))
+        if rorg_type not in self.telegrams[eep_rorg][rorg_func]:
+            self.logger.warning(
+                'Cannot find rorg %s func %s type %s in EEP!', hex(eep_rorg), hex(rorg_func), hex(rorg_type)
+            )
             return None
 
         profile = self.telegrams[eep_rorg][rorg_func][rorg_type]
@@ -205,7 +209,7 @@ class EEP(object):
         return self._find_child(profile, 'data', direction=direction)
 
     def get_values(self, profile, bitarray, status):
-        ''' Get keys and values from bitarray '''
+        """Get keys and values from bitarray"""
         if not self.init_ok or profile is None:
             return [], {}
 
@@ -223,7 +227,7 @@ class EEP(object):
         return output.keys(), output
 
     def set_values(self, profile, data, status, properties):
-        ''' Update data based on data contained in properties '''
+        """Update data based on data contained in properties"""
         if not self.init_ok or profile is None:
             return data, status
 

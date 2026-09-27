@@ -24,10 +24,8 @@ Remise à niveau du fork `j5lien/enocean`. Cocher au fur et à mesure.
 
 ## Montées de version / modernisation
 
-- [ ] Supprimer les restes de Python 2 : `from __future__`, fallback `Queue`,
-      `super(Class, self)`, dépendance `enum-compat`
 - [ ] Remonter la version minimale de `pyserial` (`>=3.0`, 2015)
-- [ ] `ruff format` sur tout le code (commit dédié), puis règles ruff supplémentaires (`UP`, `B`, `I`, `SIM`)
+- [ ] Ajouter le hash du commit `ruff format` (une fois mergé sur `main`) dans `.git-blame-ignore-revs`
 - [ ] Annotations de type + `mypy` en CI + `py.typed`
 - [ ] Remplacer `script-files` (déprécié) par un point d'entrée `[project.scripts]`, vérifier que les exemples
       fonctionnent encore
@@ -62,3 +60,5 @@ Remise à niveau du fork `j5lien/enocean`. Cocher au fur et à mesure.
       des télégrammes tronqués ; `SUPPORTED_PROFILES.md` régénéré et vérifié en CI ; seuil de couverture 90 %
 - [x] `EEP.xml` chargé avec `xml.etree` (bibliothèque standard) au lieu de BeautifulSoup/`html.parser` : dépendance
       supprimée, décodage identique (snapshot), chargement 20× plus rapide, plus aucun warning
+- [x] Restes de Python 2 supprimés (dont la dépendance `enum-compat`), `ruff format` appliqué, règles ruff
+      `I`/`UP`/`B`/`SIM`, lint étendu aux exemples et au générateur

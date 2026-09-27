@@ -1,7 +1,5 @@
-# -*- encoding: utf-8 -*-
-from __future__ import print_function, unicode_literals, division, absolute_import
-
 from enocean.protocol.eep import EEP
+
 eep = EEP()
 # profiles = eep.
 
@@ -32,9 +30,9 @@ def test_second_range():
 
 def test_rest():
     profile = eep.find_profile([], 0xA5, 0x02, 0x20)
-    assert -10 == float(profile.find('value', {'shortcut': 'TMP'}).find('scale').find('min').text)
-    assert +41.2 == float(profile.find('value', {'shortcut': 'TMP'}).find('scale').find('max').text)
+    assert float(profile.find('value', {'shortcut': 'TMP'}).find('scale').find('min').text) == -10
+    assert float(profile.find('value', {'shortcut': 'TMP'}).find('scale').find('max').text) == +41.2
 
     profile = eep.find_profile([], 0xA5, 0x02, 0x30)
-    assert -40 == float(profile.find('value', {'shortcut': 'TMP'}).find('scale').find('min').text)
-    assert +62.3 == float(profile.find('value', {'shortcut': 'TMP'}).find('scale').find('max').text)
+    assert float(profile.find('value', {'shortcut': 'TMP'}).find('scale').find('min').text) == -40
+    assert float(profile.find('value', {'shortcut': 'TMP'}).find('scale').find('max').text) == +62.3

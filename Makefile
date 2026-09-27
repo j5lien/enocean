@@ -19,10 +19,11 @@ cov:
 	uv run pytest --cov=enocean --cov-report=term-missing
 
 lint:
-	uv run ruff check enocean
+	uv run ruff check
+	uv run ruff format --check
 
 format:
-	uv run ruff format enocean
+	uv run ruff format
 
 profiles:  ## Regenerate SUPPORTED_PROFILES.md from EEP.xml
 	uv run python generate_supported_profiles.py

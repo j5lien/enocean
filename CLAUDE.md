@@ -18,7 +18,7 @@ make test          # uv run pytest
 make test-linux    # same, in a Linux Docker container (PY=3.10 to pick the version)
 make test-timing   # WITH_TIMINGS=1, enables @timing-decorated rounds/limits
 make cov           # pytest with coverage
-make lint          # ruff check (config in pyproject.toml)
+make lint          # ruff check + ruff format --check, whole project (config in pyproject.toml)
 make format        # ruff format
 ```
 
@@ -36,7 +36,9 @@ the radio on the pty master side), and TCP tests use real local sockets. Fixture
 `enocean/communicators/tests/conftest.py`; the `running` fixture guarantees threads are stopped and joined.
 Serial e2e tests are skipped on Windows (no pty). An unhandled exception in a communicator thread fails the test
 (`filterwarnings` in `pyproject.toml`).
-Lint rules (ruff: E/W/F/C90, line length 120, max complexity 15) live in `pyproject.toml`.
+Lint rules (ruff: E/W/F/C90/I/UP/B/SIM, line length 120, max complexity 15) and formatting (`ruff format`, single
+quotes) are configured in `pyproject.toml`. Multi-line ESP3 frame literals are wrapped in `# fmt: off` / `# fmt: on`
+to keep their sync/header/CRC/data/optional layout; do the same for new ones.
 
 After changing `EEP.xml`:
 ```bash
@@ -107,9 +109,9 @@ base class's queue/threading contract.
 
 ## Compatibility notes
 
-- CI (`.github/workflows/ci.yml`) tests Python 3.10–3.14 on Linux, plus 3.14 on macOS/Windows, and checks
-  `uv.lock` is current, ruff, and that the built wheel imports and loads `EEP.xml`. Actions are pinned by
-  commit SHA; Dependabot (`.github/dependabot.yml`) bumps them and the uv dependencies weekly.
-  `requires-python = ">=3.10"`. The codebase still carries
-  `from __future__ import ...` imports and a `try: import queue / except ImportError: import Queue as queue`
-  Python 2 fallback in a few places — leftovers from Python 2 support, candidates for cleanup.
+- Python >= 3.10 only (`requires-python`); CI (`.github/workflows/ci.yml`) tests 3.10–3.14 on Linux, plus 3.14 on
+  macOS/Windows, and checks `uv.lock` is current, ruff, `SUPPORTED_PROFILES.md` freshness, coverage >= 90%, and that
+  the built wheel imports and loads `EEP.xml`. Actions are pinned by commit SHA; Dependabot
+  (`.github/dependabot.yml`) bumps them and the uv dependencies weekly.
+- The Python 2 compatibility code has been removed; don't reintroduce `from __future__` imports, `Queue` fallbacks
+  or `super(Class, self)`.
