@@ -1,0 +1,64 @@
+# Pushing a version tag (e.g. 1.0.0) creates the GitHub release, with the wheel and sdist attached and the matching
+# CHANGELOG.md section as notes. Not published to PyPI.
+name: Release
+
+on:
+  push:
+    tags: ['[0-9]+.[0-9]+.[0-9]+']
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: astral-sh/setup-uv@c18668ad3cf93ea998bef934396af7bb5c839dc7 # v10.2.0
+      - name: Check the tag matches the package version
+        run: |
+          version=$(python3 -c "import tomllib; print(tomllib.load(open('pyproject.toml', 'rb'))['project']['version'])")
+          if [ "$version" != "$GITHUB_REF_NAME" ]; then
+            echo "::error::Tag $GITHUB_REF_NAME does not match pyproject.toml version $version"
+            exit 1
+          fi
+      - name: Run the tests
+        run: uv run --locked pytest
+      - name: Build sdist and wheel
+        run: uv build
+      - name: Check distribution metadata
+        run: uvx twine check --strict dist/*
+      - name: Extract release notes from CHANGELOG.md
+        run: |
+          awk -v tag="$GITHUB_REF_NAME" '
+            index($0, "## [" tag "]") == 1 { found = 1; next }
+            found && /^## \[/ { exit }
+            found { print }
+          ' CHANGELOG.md > dist/RELEASE_NOTES.md
+          if [ ! -s dist/RELEASE_NOTES.md ]; then
+            echo "::error::No '## [$GITHUB_REF_NAME]' section in CHANGELOG.md"
+            exit 1
+          fi
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: dist
+          path: dist/
+
+  release:
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: dist
+          path: dist/
+      - name: Create the GitHub release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: >-
+          gh release create "$GITHUB_REF_NAME" dist/*.whl dist/*.tar.gz
+          --repo "$GITHUB_REPOSITORY" --title "$GITHUB_REF_NAME" --notes-file dist/RELEASE_NOTES.md --verify-tag

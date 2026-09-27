@@ -55,6 +55,13 @@ decoding of fixed bit patterns against `eep_snapshot.json`: review the snapshot 
 
 There's no build step; it's a pure-Python package (`uv build` produces sdist/wheel).
 
+## Releasing
+
+Not published to PyPI. Update `CHANGELOG.md` (new `## [x.y.z] - date` section) and `version` in `pyproject.toml`,
+merge, then tag `main` with the bare version (`x.y.z`, no `v` prefix, matching the existing tags) and push the tag:
+`.github/workflows/release.yml` checks it matches `pyproject.toml`, runs the tests, builds, and creates the GitHub
+release with the wheel/sdist and that CHANGELOG section as notes.
+
 ## Architecture
 
 ### Packet layer (`enocean/protocol/packet.py`)

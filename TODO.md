@@ -21,7 +21,6 @@ Remise à niveau du fork `j5lien/enocean`. Cocher au fur et à mesure.
 
 ## Documentation / métadonnées
 
-- [ ] Numéro de version (toujours `0.60.1`, celle du projet d'origine) et CHANGELOG
 
 ## Dépôt GitHub
 
@@ -57,3 +56,4 @@ Remise à niveau du fork `j5lien/enocean`. Cocher au fur et à mesure.
 - [x] Package entièrement typé (`mypy --strict` en CI, `py.typed`, `FieldValue` pour `packet.parsed`) ;
       `.git-blame-ignore-revs` pour le commit de formatage
 - [x] Hooks pre-commit (`make hooks`) utilisant les outils de `uv.lock` ; `pyserial>=3.5`
+- [x] Release 1.0.0 : `CHANGELOG.md`, workflow de release sur tag (release GitHub avec wheel/sdist, sans PyPI)
