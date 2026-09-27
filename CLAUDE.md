@@ -6,7 +6,8 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 A Python library implementing the EnOcean serial protocol (ESP3) for reading and controlling EnOcean
 radio devices (switches, sensors, etc.) over serial or TCP. Device behavior/data layout is driven by
-EnOcean Equipment Profiles (EEP), defined in `enocean/protocol/EEP.xml` and parsed with the stdlib `xml.etree.ElementTree`.
+EnOcean Equipment Profiles (EEP), defined in `enocean/protocol/profiles/` (one XML file per profile, plus `index.xml`) and
+parsed with the stdlib `xml.etree.ElementTree`.
 
 ## Commands
 
@@ -52,19 +53,19 @@ to keep their sync/header/CRC/data/optional layout; do the same for new ones.
 The package is fully typed (`py.typed`, `mypy --strict`; tests are not type-checked). `ElementTree.Element`
 lookups return `Optional`: use the `_attr`/`_child` helpers in `eep.py`. Decoded fields are `FieldValue` TypedDicts.
 
-`enocean/protocol/EEP.xml` is **generated, never edited by hand**: `make eep` downloads the official EnOcean Alliance
+`enocean/protocol/profiles/` is **generated, never edited by hand**: `make eep` downloads the official EnOcean Alliance
 specification (EEP 2.6.8 XML, not versioned, SHA-256 checked, cached in `.cache/`), converts it with
 `tools/generate_eep.py`, and merges `tools/eep_additions.xml` (profiles missing from or unusable in the spec, each with
-its reason). CI regenerates it and fails if it differs. To fix or add a profile, change the generator or the additions,
+its reason). CI regenerates them and fails if anything differs. To fix or add a profile, change the generator or the additions,
 then:
 ```bash
-make eep           # regenerate EEP.xml and SUPPORTED_PROFILES.md
+make eep           # regenerate enocean/protocol/profiles/ and SUPPORTED_PROFILES.md
 UPDATE_EEP_SNAPSHOT=1 uv run pytest enocean/protocol/tests/test_eep_profiles.py   # if decoding changed on purpose
 ```
 The generator's warnings list what the spec expresses but the format can't (split MSB/LSB or signed values, decoded
 raw; masked enum values; variants with identical conditions). Shortcuts are the official ones made into identifiers
 (`I/O` -> `IO`).
-`test_eep_profiles.py` validates every profile in `EEP.xml` (fields fit and don't overlap, enum values fit their
+`test_eep_profiles.py` validates every profile (fields fit and don't overlap, enum values fit their
 bits, VLD `<data>` declares `bits`), round-trips every enum/value through `RadioPacket.create()`, and compares the
 decoding of fixed bit patterns against `eep_snapshot.json`: review the snapshot diff when regenerating it.
 
@@ -132,8 +133,9 @@ release with the wheel/sdist and that CHANGELOG section as notes.
   (sender, status) are fixed-offset-from-the-end.
 
 ### EEP layer (`enocean/protocol/eep.py`)
-`EEP` loads and indexes `EEP.xml` on construction into `self.telegrams[rorg][func][type]` (an
-`ElementTree.Element`; the root is `EEP.xml_root`). Elements without children are falsy, so compare
+`EEP` reads `profiles/index.xml` on construction (`EEP.xml_index`) and exposes `self.telegrams[rorg][func][type]`, a
+lazy mapping: each profile file is parsed on first access and cached (`Packet.eep` is the shared instance), so only
+the profiles an application uses are loaded. Values are `ElementTree.Element`s. Elements without children are falsy, so compare
 lookups with `is None`, never `if not element`. `find_profile()` looks up a profile by RORG/FUNC/TYPE (and optional
 `direction`/`command`), otherwise picks the `<data>` variant whose `<condition source="data|status" offset size
 value>` elements the telegram matches (most specific first), falling back to the first variant. `create()` writes the
@@ -172,7 +174,7 @@ base class's queue/threading contract.
 
 - Python >= 3.10 only (`requires-python`); CI (`.github/workflows/ci.yml`) tests 3.10–3.14 on Linux, plus 3.14 on
   macOS/Windows, and checks `uv.lock` is current, ruff, `SUPPORTED_PROFILES.md` freshness, coverage >= 90%, and that
-  the built wheel imports and loads `EEP.xml`. Actions are pinned by commit SHA; Dependabot
+  the built wheel imports and loads its profiles. Actions are pinned by commit SHA; Dependabot
   (`.github/dependabot.yml`) bumps them and the uv dependencies weekly.
 - The Python 2 compatibility code has been removed; don't reintroduce `from __future__` imports, `Queue` fallbacks
   or `super(Class, self)`.

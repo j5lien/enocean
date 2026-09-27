@@ -29,11 +29,11 @@ jobs:
           uv run --locked ruff format --check
       - name: Mypy
         run: uv run --locked mypy
-      - name: Check EEP.xml is generated from the official specification
+      - name: Check the profiles are generated from the official specification
         run: |
           uv run --locked python tools/generate_eep.py
-          git diff --exit-code enocean/protocol/EEP.xml || (echo "::error::Run 'make eep' and commit EEP.xml" && exit 1)
-      - name: Check SUPPORTED_PROFILES.md is up to date with EEP.xml
+          test -z "$(git status --porcelain enocean/protocol/profiles)" || (git status --short enocean/protocol/profiles; echo "::error::Run 'make eep' and commit enocean/protocol/profiles" && exit 1)
+      - name: Check SUPPORTED_PROFILES.md is up to date with the profiles
         run: |
           uv run --locked python generate_supported_profiles.py
           git diff --exit-code SUPPORTED_PROFILES.md || (echo "::error::Run 'make profiles' and commit SUPPORTED_PROFILES.md" && exit 1)
@@ -83,7 +83,8 @@ jobs:
         run: >-
           uv run --isolated --no-project --with "$GITHUB_WORKSPACE"/dist/*.whl
           python -c "import enocean; from enocean.protocol.eep import EEP;
-          assert 'site-packages' in enocean.__file__, enocean.__file__; assert EEP().init_ok"
+          assert 'site-packages' in enocean.__file__, enocean.__file__; assert EEP().init_ok;
+          assert EEP().describe('D2-01-12')"
       - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: dist

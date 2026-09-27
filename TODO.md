@@ -73,8 +73,8 @@ aujourd'hui) ; on **s'aligne sur les noms officiels** des champs (version 2.0).
       matériels revalidés
 - [ ] Limites du format relevées par le générateur, à traiter si un appareil en a besoin : valeurs réparties sur deux
       champs (MSB/LSB) ou signées, décodées en brut ; valeurs d'enum masquées ; variantes indiscernables (D2-30, D2-31)
-- [ ] Chargement de `EEP.xml` plus lent (16 ms au lieu de 1 ms, 1,5 Mo) : le charger à la première utilisation plutôt
-      qu'à l'import
+- [x] Un fichier par profil chargé à la première utilisation : `EEP()` passe de 16 ms à 0,6 ms, l'import d'`enocean`
+      de ~45 à ~20 ms (`__version__` calculé à la demande)
 
 ## 4. Documentation de l'API
 

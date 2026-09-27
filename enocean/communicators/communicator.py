@@ -160,7 +160,7 @@ class Communicator(threading.Thread):
     def _teach_in_outcome(self, packet: UTETeachInPacket) -> tuple[list[bool], str]:
         """
         The response to a UTE teach-in request, updating the device registry: deletion for deletion requests (and for
-        non-specific ones from devices already known), refusal for profiles unknown to EEP.xml, acceptance otherwise.
+        non-specific ones from devices already known), refusal for unknown profiles, acceptance otherwise.
         """
         known = self.devices is not None and packet.sender_hex in self.devices
         if packet.request_type == UTETeachInPacket.DELETE or (

@@ -5,7 +5,6 @@ The public API is importable from here: `from enocean import SerialCommunicator,
 """
 
 import logging
-from importlib.metadata import PackageNotFoundError, version
 
 # Libraries must not emit logs unless the application configures logging
 logging.getLogger(__name__).addHandler(logging.NullHandler())
@@ -24,10 +23,18 @@ from enocean.protocol.packet import (  # noqa: E402
 )
 from enocean.stats import CommunicatorStats, Health, SenderStats, StatsSnapshot  # noqa: E402
 
-try:
-    __version__ = version('enocean')
-except PackageNotFoundError:  # pragma: no cover - running from a source tree without installing
-    __version__ = '0+unknown'
+
+def __getattr__(name: str) -> str:
+    # __version__ is looked up on demand: importlib.metadata alone would double the import time
+    if name == '__version__':
+        from importlib.metadata import PackageNotFoundError, version
+
+        try:
+            return version('enocean')
+        except PackageNotFoundError:  # pragma: no cover - running from a source tree without installing
+            return '0+unknown'
+    raise AttributeError('module %r has no attribute %r' % (__name__, name))
+
 
 __all__ = [
     'EEP',
