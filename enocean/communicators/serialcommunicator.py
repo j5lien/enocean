@@ -28,6 +28,7 @@ class SerialCommunicator(Communicator):
                 try:
                     self.__ser.write(bytearray(packet.build()))
                 except serial.SerialException:
+                    self.logger.error('Serial port exception while writing! (device disconnected?)')
                     self.stop()
 
             # Read chars from serial port as hex numbers

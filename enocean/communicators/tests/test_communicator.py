@@ -1,3 +1,5 @@
+import threading
+
 from enocean.communicators.communicator import Communicator
 from enocean.decorators import timing
 from enocean.protocol.constants import PACKET
@@ -90,8 +92,27 @@ def test_base_id():
     ])
     # fmt: on
 
+    result = []
+    requester = threading.Thread(target=lambda: result.append(com.base_id))
+    requester.start()
+    request = com.transmit.get(timeout=1)
+    assert request.packet_type == PACKET.COMMON_COMMAND and request.data == [0x08]
+
     com._buffer.extend(other_data)
     com._buffer.extend(response_data)
     com.parse()
+    requester.join(1)
+
+    assert result == [[0xFF, 0x87, 0xCA, 0x00]]
     assert com.base_id == [0xFF, 0x87, 0xCA, 0x00]
-    assert com.receive.qsize() == 2
+    # Both packets are still delivered, in order
+    assert [com.receive.get().packet_type for _ in range(2)] == [PACKET.RADIO_ERP1, PACKET.RESPONSE]
+
+
+def test_base_id_times_out_without_response():
+    com = Communicator()
+    assert com.base_id is None
+    # A later call sends a new request
+    com.transmit.get_nowait()
+    assert com.base_id is None
+    assert com.transmit.qsize() == 1
