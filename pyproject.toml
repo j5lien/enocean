@@ -47,6 +47,11 @@ dev = [
     "ruff>=0.13",
     "types-pyserial>=3.5.0.20260712",
 ]
+docs = [
+    "mkdocs>=1.6,<2",
+    "mkdocs-material>=9.7.7",
+    "mkdocstrings[python]>=1.0.6",
+]
 
 [tool.setuptools]
 packages = ["enocean", "enocean.protocol", "enocean.communicators"]
@@ -79,15 +84,17 @@ show_missing = true
 
 [tool.ruff]
 line-length = 120
+# The pages include examples with pymdownx.snippets markers (--8<--) that ruff format would mangle
+extend-exclude = ["docs/**/*.md"]
 target-version = "py310"
 
 [tool.ruff.format]
 quote-style = "single"
 
 [tool.ruff.lint]
-select = ["E", "W", "F", "C90", "I", "UP", "B", "SIM"]
+select = ["E", "W", "F", "C90", "I", "UP", "B", "SIM", "D"]
 # printf-style formatting is kept (also what logging uses)
-ignore = ["UP031"]
+ignore = ["UP031", "D105", "D107"]
 
 [tool.ruff.lint.isort]
 known-first-party = ["enocean"]
@@ -96,8 +103,18 @@ known-local-folder = ["conftest", "stick"]
 [tool.ruff.lint.mccabe]
 max-complexity = 15
 
+[tool.ruff.lint.pydocstyle]
+convention = "google"
+
 [tool.ruff.lint.per-file-ignores]
 "__init__.py" = ["F401"]
+# Docstrings are required on the package's public API only
+"**/tests/**" = ["D"]
+"hardware_tests/**" = ["D"]
+"examples/**" = ["D"]
+"tools/**" = ["D"]
+"generate_supported_profiles.py" = ["D"]
+"docs/**" = ["D"]
 
 [tool.mypy]
 files = ["enocean"]

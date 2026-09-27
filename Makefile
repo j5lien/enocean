@@ -1,4 +1,4 @@
-.PHONY: install hooks test test-hardware test-linux cov lint format eep profiles clean
+.PHONY: install hooks test test-hardware test-linux cov lint format docs docs-build eep profiles clean
 
 install:  ## Create .venv and install package + dev deps
 	uv sync
@@ -28,6 +28,12 @@ lint:
 
 format:
 	uv run ruff format
+
+docs:  ## Serve the documentation on http://127.0.0.1:8000
+	uv run --group docs mkdocs serve
+
+docs-build:  ## Build the documentation into site/, failing on warnings
+	uv run --group docs mkdocs build --strict
 
 eep:  ## Regenerate enocean/protocol/profiles/ from the official EEP specification (downloaded) and tools/eep_additions.xml
 	uv run python tools/generate_eep.py

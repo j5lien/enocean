@@ -1,3 +1,5 @@
+"""EnOcean Equipment Profiles: loading the profile definitions, decoding and encoding their bit fields."""
+
 import logging
 import os
 from collections import OrderedDict
@@ -93,6 +95,7 @@ class ProfileDescription:
     fields: tuple[FieldDescription, ...]
 
     def field(self, shortcut: str) -> FieldDescription:
+        """The field with this shortcut; raises StopIteration if the variant has none."""
         return next(f for f in self.fields if f.shortcut == shortcut)
 
 
@@ -144,9 +147,11 @@ class _Profiles(Mapping[int, Element]):
 
 
 class EEP:
-    """
-    The EnOcean Equipment Profiles known to the library (enocean/protocol/profiles/, generated from the official
-    specification). Only the index is read on construction; each profile is parsed the first time it is used.
+    """The EnOcean Equipment Profiles known to the library.
+
+    The definitions (enocean/protocol/profiles/) are generated from the official EnOcean Alliance specification. Only
+    the index is read on construction; each profile is parsed the first time it is used. Packet.eep is the instance
+    shared by all packets.
     """
 
     logger = logging.getLogger('enocean.protocol.eep')
@@ -196,7 +201,7 @@ class EEP:
 
     @staticmethod
     def _get_raw(source: Element, bitarray: list[bool]) -> int | None:
-        """Get raw data as integer, based on offset and size"""
+        """Get raw data as integer, based on offset and size."""
         offset = int(_attr(source, 'offset'))
         size = int(_attr(source, 'size'))
         length = len(bitarray)
@@ -209,7 +214,7 @@ class EEP:
 
     @staticmethod
     def _set_raw(target: Element, raw_value: int, bitarray: list[bool]) -> list[bool]:
-        """put value into bit array"""
+        """Put value into bit array."""
         offset = int(_attr(target, 'offset'))
         size = int(_attr(target, 'size'))
         for digit in range(size):
@@ -224,7 +229,7 @@ class EEP:
         return None
 
     def _get_value(self, source: Element, raw_value: int) -> dict[str, FieldValue]:
-        """Get value, based on the data in XML"""
+        """Get value, based on the data in XML."""
         rng_min, rng_max, scl_min, scl_max = _range_and_scale(source)
 
         return {
@@ -237,7 +242,7 @@ class EEP:
         }
 
     def _get_enum(self, source: Element, raw_value: int) -> dict[str, FieldValue]:
-        """Get enum value, based on the data in XML"""
+        """Get enum value, based on the data in XML."""
         # Find value description.
         value_desc = self._find_child(source, 'item', value=raw_value)
         if value_desc is None:
@@ -264,7 +269,7 @@ class EEP:
         }
 
     def _get_boolean(self, source: Element, bitarray: list[bool]) -> dict[str, FieldValue]:
-        """Get boolean value, based on the data in XML"""
+        """Get boolean value, based on the data in XML."""
         raw_value = self._get_raw(source, bitarray)
         return {
             _attr(source, 'shortcut'): {
@@ -276,7 +281,7 @@ class EEP:
         }
 
     def _set_value(self, target: Element, value: float, bitarray: list[bool]) -> list[bool]:
-        """set given numeric value to target field in bitarray"""
+        """Set given numeric value to target field in bitarray."""
         # derive raw value
         rng_min, rng_max, scl_min, scl_max = _range_and_scale(target)
         raw_value = (value - scl_min) * (rng_max - rng_min) / (scl_max - scl_min) + rng_min
@@ -284,8 +289,9 @@ class EEP:
         return self._set_raw(target, int(raw_value), bitarray)
 
     def _set_enum(self, target: Element, value: int | float | str, bitarray: list[bool]) -> list[bool]:
-        """
-        Set an enum field in bitarray: by raw value (int), by description (str), or by physical value (float) for
+        """Set an enum field in bitarray.
+
+        By raw value (int), by description or its label before the colon (str), or by physical value (float) for
         ranges with a scale.
         """
         if isinstance(value, float):
@@ -329,7 +335,7 @@ class EEP:
 
     @staticmethod
     def _set_boolean(target: Element, data: bool, bitarray: list[bool]) -> list[bool]:
-        """set given value to target bit in bitarray"""
+        """Set given value to target bit in bitarray."""
         bitarray[int(_attr(target, 'offset'))] = data
         return bitarray
 
@@ -341,9 +347,16 @@ class EEP:
                     yield EEPId(rorg, func, type_)
 
     def describe(self, eep_id: EEPId | str) -> tuple[ProfileDescription, ...]:
-        """
-        The fields of a profile, one ProfileDescription per variant (direction or command), e.g.
-        `EEP().describe('D2-01-12')`. Raises KeyError for an unknown profile.
+        """The fields of a profile, e.g. `EEP().describe('D2-01-12')`.
+
+        Args:
+            eep_id: The profile, as an EEPId or a string such as 'D2-01-12'.
+
+        Returns:
+            One ProfileDescription per variant (direction, command or other condition).
+
+        Raises:
+            KeyError: Unknown profile.
         """
         eep_id = EEPId.parse(eep_id)
         profile = self.telegrams[eep_id.rorg][eep_id.func][eep_id.type]
@@ -380,9 +393,13 @@ class EEP:
         command: int | None = None,
         status: list[bool] | None = None,
     ) -> Element | None:
-        """
-        The <data> variant of a profile to decode or build a telegram with: the one for `command` or `direction` when
-        given, else the one whose conditions the telegram's data bits (bitarray) and status bits match.
+        """The <data> variant of a profile to decode or build a telegram with.
+
+        The one for `command` or `direction` when given, else the one whose conditions the telegram's data bits
+        (bitarray) and status bits match, else the first one.
+
+        Returns:
+            The variant, None if the profile is unknown.
         """
         if not self.init_ok:
             self.logger.warning('EEP profiles not loaded!')
@@ -426,10 +443,10 @@ class EEP:
 
     @staticmethod
     def _detect_variant(profile: Element, bitarray: list[bool], status: list[bool] | None) -> Element | None:
-        """
-        The variant whose <condition> elements (data or status bits the telegram must hold) all match, preferring
-        variants of the telegram's length, then the most specific one. None if no variant has conditions or none
-        matches.
+        """The variant whose <condition> elements (data or status bits the telegram must hold) all match.
+
+        Prefers variants of the telegram's length, then the most specific one. None if no variant has conditions or
+        none matches.
         """
         variants = [data for data in profile.findall('data') if data.find('condition') is not None]
         if not variants or not bitarray:
@@ -452,11 +469,11 @@ class EEP:
 
     @staticmethod
     def _detect_command(profile: Element, bitarray: list[bool]) -> Element | None:
-        """
-        For profiles with several commands, the <data> variant the telegram actually carries: the one whose own
-        command field holds its command number, preferring variants whose length matches the telegram's (the command
-        field is not at the same place in every variant, e.g. D2-05-00). None if the profile has no commands or none
-        matches.
+        """For profiles with commands but no conditions, the <data> variant the telegram carries.
+
+        The one whose own command field holds its command number, preferring variants whose length matches the
+        telegram's (the command field is not at the same place in every variant). None if the profile has no commands
+        or none matches.
         """
         eep_command = profile.find('command')
         if eep_command is None or not bitarray:
@@ -474,7 +491,7 @@ class EEP:
     def get_values(
         self, profile: Element | None, bitarray: list[bool], status: list[bool]
     ) -> tuple[Iterable[str], dict[str, FieldValue]]:
-        """Get keys and values from bitarray"""
+        """Get keys and values from bitarray."""
         if not self.init_ok or profile is None:
             return [], {}
 
@@ -496,7 +513,7 @@ class EEP:
     def set_values(
         self, profile: Element | None, data: list[bool], status: list[bool], properties: Mapping[str, Any]
     ) -> tuple[list[bool], list[bool]]:
-        """Update data based on data contained in properties"""
+        """Update data based on data contained in properties."""
         if not self.init_ok or profile is None:
             return data, status
 

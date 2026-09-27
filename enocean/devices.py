@@ -1,5 +1,4 @@
-"""
-Known devices and the profile (EEP) each one speaks, so received telegrams can be decoded automatically.
+"""Known devices and the profile (EEP) each one speaks, so received telegrams can be decoded automatically.
 
     registry = DeviceRegistry.from_config(
         {
@@ -24,7 +23,7 @@ from enocean.utils import to_hex_string
 
 
 def device_id(value: str | Iterable[int]) -> str:
-    """Normalizes a device ID: '05:99:77:af' or [0x05, 0x99, 0x77, 0xAF] -> '05:99:77:AF'."""
+    """Normalize a device ID: '05:99:77:af' or [0x05, 0x99, 0x77, 0xAF] -> '05:99:77:AF'."""
     if isinstance(value, str):
         return value.strip().upper()
     return to_hex_string(value)
@@ -40,13 +39,17 @@ class Device:
     metadata: Mapping[str, Any] = field(default_factory=dict)
 
     def to_dict(self) -> dict[str, Any]:
+        """JSON-serializable view of the device."""
         return {'id': self.id, 'eep': str(self.eep), 'name': self.name, 'metadata': dict(self.metadata)}
 
 
 class DeviceRegistry:
-    """
-    Devices by ID. defaults gives the profile to try for unknown devices, by RORG (e.g. {RORG.RPS: 'F6-02-02'});
-    telegrams from ignored devices are dropped by communicators using this registry.
+    """Known devices by ID, with the profiles to decode their telegrams with.
+
+    Args:
+        devices: The known devices.
+        defaults: Profile to try for telegrams of unknown devices, by RORG (e.g. {RORG.RPS: 'F6-02-02'}).
+        ignored: IDs of devices whose telegrams communicators using this registry drop.
     """
 
     def __init__(
@@ -68,9 +71,16 @@ class DeviceRegistry:
         defaults: Mapping[int, EEPId | str] | None = None,
         ignored: Iterable[str | Iterable[int]] = (),
     ) -> 'DeviceRegistry':
-        """
-        Builds a registry from {id: {'eep': 'D2-01-12', 'name': ..., other keys go to metadata}}, e.g. loaded from
-        JSON, YAML or TOML. {'rorg': ..., 'func': ..., 'type': ...} is accepted instead of 'eep'.
+        """Build a registry from a mapping, e.g. loaded from JSON, YAML or TOML.
+
+        Args:
+            config: {id: {'eep': 'D2-01-12', 'name': ..., other keys}}: other keys go to the device's metadata;
+                {'rorg': ..., 'func': ..., 'type': ...} is accepted instead of 'eep'.
+            defaults: See DeviceRegistry.
+            ignored: See DeviceRegistry.
+
+        Returns:
+            The registry.
         """
         devices = []
         for raw_id, entry in config.items():
@@ -83,18 +93,23 @@ class DeviceRegistry:
         return cls(devices, defaults, ignored)
 
     def add(self, device: Device) -> None:
+        """Add a device, replacing any with the same ID."""
         self._devices[device_id(device.id)] = device
 
     def remove(self, id: str | Iterable[int]) -> None:
+        """Remove a device, if known."""
         self._devices.pop(device_id(id), None)
 
     def get(self, id: str | Iterable[int]) -> Device | None:
+        """The device with this ID ('05:99:77:AF' or bytes), or None."""
         return self._devices.get(device_id(id))
 
     def ignore(self, id: str | Iterable[int]) -> None:
+        """Ignore a device: communicators using this registry drop its telegrams."""
         self._ignored.add(device_id(id))
 
     def is_ignored(self, id: str | Iterable[int]) -> bool:
+        """Whether the device is ignored."""
         return device_id(id) in self._ignored
 
     def __contains__(self, id: object) -> bool:
@@ -114,10 +129,12 @@ class DeviceRegistry:
         return self.defaults.get(int(packet.rorg))
 
     def decode(self, packet: Packet) -> Device | None:
-        """
-        Decodes a radio telegram with its device's profile (or the default one for its RORG), filling packet.parsed,
-        and sets packet.device. Returns the device, None if unknown. Teach-in (UTE) and non-radio packets are left
-        as they are.
+        """Decode a radio telegram with its device's profile, or the default one for its RORG.
+
+        Fills packet.parsed and sets packet.device. Teach-in (UTE) and non-radio packets are left as they are.
+
+        Returns:
+            The device, or None if the sender is unknown.
         """
         if not isinstance(packet, RadioPacket) or isinstance(packet, UTETeachInPacket):
             return None

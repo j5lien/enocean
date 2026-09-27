@@ -1,3 +1,5 @@
+"""Communicator for an EnOcean module on a serial port (e.g. a USB 300 stick)."""
+
 import logging
 import time
 from collections.abc import Callable
@@ -13,7 +15,7 @@ if TYPE_CHECKING:
 
 
 class SerialCommunicator(Communicator):
-    """Serial port communicator class for EnOcean radio"""
+    """Serial port communicator class for EnOcean radio."""
 
     logger = logging.getLogger('enocean.communicators.SerialCommunicator')
 
@@ -24,11 +26,17 @@ class SerialCommunicator(Communicator):
         teach_in: bool = True,
         devices: 'DeviceRegistry | None' = None,
     ) -> None:
-        """
-        port: serial port of the module, e.g. /dev/ttyUSB0 or /dev/serial/by-id/usb-EnOcean_GmbH_EnOcean_USB_300_...
-        (Linux), /dev/cu.usbserial-... (macOS). callback: called with each received packet instead of queueing it in
-        `receive`. teach_in: answer UTE teach-in requests automatically. devices: decode received telegrams with
-        the profile of their device, and drop those of ignored devices (see enocean.devices).
+        """Open the serial port of the module; start() the communicator to begin reading and writing.
+
+        Args:
+            port: Serial port of the module, e.g. /dev/serial/by-id/usb-EnOcean_GmbH_EnOcean_USB_300_... or
+                /dev/ttyUSB0 (Linux), /dev/cu.usbserial-... (macOS).
+            callback: See Communicator.
+            teach_in: See Communicator.
+            devices: See Communicator.
+
+        Raises:
+            serial.SerialException: The port can't be opened.
         """
         super().__init__(callback, teach_in, devices)
         # Initialize serial port
@@ -36,6 +44,7 @@ class SerialCommunicator(Communicator):
         self._transport_ready = True
 
     def run(self) -> None:
+        """Thread body: write queued packets, read and parse bytes until stopped or the device disconnects."""
         self.logger.info('SerialCommunicator started')
         while not self._stop_flag.is_set():
             # If there's messages in transmit queue

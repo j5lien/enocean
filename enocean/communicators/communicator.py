@@ -1,3 +1,5 @@
+"""The Communicator base class: packet parsing, queues, base ID, teach-in, statistics and health."""
+
 import logging
 import queue
 import threading
@@ -23,9 +25,16 @@ def packet_log_fields(packet: Packet) -> dict[str, object]:
 
 
 class Communicator(threading.Thread):
-    """
-    Communicator base-class for EnOcean.
-    Not to be used directly, only serves as base class for SerialCommunicator etc.
+    """Base class of the transports: a thread parsing ESP3 bytes into packets and sending packets.
+
+    Use SerialCommunicator or TCPCommunicator. Received packets are put in the `receive` queue, or passed to
+    `callback`; `send()` queues packets for the transport to write. Every communicator keeps `stats` and reports its
+    `health()`.
+
+    Args:
+        callback: Called with each received packet (from the communicator thread) instead of queueing it in `receive`.
+        teach_in: Answer UTE teach-in requests at any time. With False, only during learn().
+        devices: Decode received telegrams with the profile of their device, and drop those of ignored devices.
     """
 
     logger = logging.getLogger('enocean.communicators.Communicator')
@@ -68,7 +77,7 @@ class Communicator(threading.Thread):
         self.teach_in = teach_in
 
     def _get_from_send_queue(self) -> Packet | None:
-        """Get message from send queue, if one exists"""
+        """Get message from send queue, if one exists."""
         try:
             packet = self.transmit.get(block=False)
             self.logger.debug('Sending %s', packet, extra=packet_log_fields(packet))
@@ -78,6 +87,11 @@ class Communicator(threading.Thread):
         return None
 
     def send(self, packet: Packet) -> bool:
+        """Queue a packet for the transport to write.
+
+        Returns:
+            False if packet isn't a Packet.
+        """
         if not isinstance(packet, Packet):
             self.logger.error('Object to send must be an instance of Packet')
             return False
@@ -90,10 +104,11 @@ class Communicator(threading.Thread):
         self.stats.record_bytes_received(len(data))
 
     def stop(self) -> None:
+        """Ask the communicator thread to stop; join() it to wait until it has."""
         self._stop_flag.set()
 
     def parse(self) -> PARSE_RESULT:
-        """Parses messages and puts them to receive queue"""
+        """Parses messages and puts them to receive queue."""
         # Loop while we get new messages
         while True:
             status, self._buffer, packet = Packet.parse_msg(self._buffer, on_error=self.stats.record_parse_error)
@@ -158,9 +173,10 @@ class Communicator(threading.Thread):
             self.stats.record_teach_in_response()
 
     def _teach_in_outcome(self, packet: UTETeachInPacket) -> tuple[list[bool], str]:
-        """
-        The response to a UTE teach-in request, updating the device registry: deletion for deletion requests (and for
-        non-specific ones from devices already known), refusal for unknown profiles, acceptance otherwise.
+        """The response to a UTE teach-in request, updating the device registry.
+
+        Deletion for deletion requests (and for non-specific ones from devices already known), refusal for unknown
+        profiles, acceptance otherwise.
         """
         known = self.devices is not None and packet.sender_hex in self.devices
         if packet.request_type == UTETeachInPacket.DELETE or (
@@ -186,11 +202,18 @@ class Communicator(threading.Thread):
         return time.monotonic() < self._learning_until
 
     def learn(self, timeout: float = 30, max_devices: int | None = None) -> list[Device]:
-        """
-        Opens a teach-in window: for `timeout` seconds (or until `max_devices` devices are taught in), UTE teach-in
-        requests are answered even with teach_in=False. Put the devices in learn mode meanwhile (e.g. press their
-        learn button). Taught-in devices are added to `devices` (a DeviceRegistry is created if there is none) and
-        returned. Blocks: call it from another thread than the communicator's.
+        """Open a teach-in window: answer UTE teach-in requests, even with teach_in=False.
+
+        Put the devices in learn mode meanwhile (e.g. press their learn button). Taught-in devices are added to
+        `devices` (a DeviceRegistry is created if there is none). Blocks: call it from another thread than the
+        communicator's.
+
+        Args:
+            timeout: How long the window stays open, in seconds.
+            max_devices: Close the window once this many devices are taught in.
+
+        Returns:
+            The devices taught in.
         """
         if self.devices is None:
             self.devices = DeviceRegistry()
@@ -213,9 +236,14 @@ class Communicator(threading.Thread):
             self.send(Packet(PACKET.COMMON_COMMAND, data=[0x08]))
 
     def health(self, max_silence: float | None = None) -> Health:
-        """
-        Current state, e.g. for a liveness/readiness probe. With max_silence (seconds), going that long without
-        receiving any packet counts as a problem (after startup, the delay counts from the communicator's creation).
+        """Current state, e.g. for a liveness/readiness probe.
+
+        Args:
+            max_silence: Seconds without receiving any packet that count as a problem (after startup, the delay counts
+                from the communicator's creation). None to ignore silence.
+
+        Returns:
+            The state; `healthy` is False and `problems` says why when something is wrong.
         """
         snapshot = self.stats.snapshot()
         silence = time.time() - (snapshot.last_packet_received_at or snapshot.started_at)
@@ -239,10 +267,10 @@ class Communicator(threading.Thread):
 
     @property
     def base_id(self) -> list[int] | None:
-        """
-        Fetches Base ID from the transmitter, if required. Otherwise returns the currently set Base ID.
-        Waits up to a second for the module's response, except from the communicator thread itself, which can't
-        wait for a response only it can read: there the request is sent and None returned until it arrives.
+        """The module's base ID, the first of the 128 IDs it can send from; asked to the module when unknown.
+
+        Waits up to a second for the module's response, except from the communicator thread itself, which can't wait
+        for a response only it can read: there the request is sent and None returned until it arrives.
         """
         if self._base_id is not None:
             return self._base_id

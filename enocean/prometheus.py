@@ -1,5 +1,4 @@
-"""
-Prometheus metrics for communicators. Requires the optional dependency: `pip install enocean[prometheus]`.
+"""Prometheus metrics for communicators. Requires the optional dependency: `pip install enocean[prometheus]`.
 
     from prometheus_client import start_http_server
     from enocean.prometheus import register
@@ -38,8 +37,7 @@ def _packet_labels(kind: PacketKind) -> list[str]:
 
 
 class EnOceanCollector(Collector):
-    """
-    Collects metrics from one communicator, or several given as {name: communicator} (adds a `communicator` label).
+    """Collects metrics from one communicator, or several given as {name: communicator} (adds a `communicator` label).
 
     namespace prefixes every metric name; const_labels are added to every sample (e.g. {'site': 'home'});
     max_silence (seconds) is passed to health() for the `healthy` gauge. per_sender enables per-device tracking
@@ -82,6 +80,7 @@ class EnOceanCollector(Collector):
         return GaugeMetricFamily('%s_%s' % (self._namespace, name), documentation, labels=self._labels(*labels))
 
     def collect(self) -> Iterator[Metric]:
+        """Metrics of the communicators, read from their stats and health (called by prometheus_client on scrape)."""
         received = self._counter('packets_received', 'Packets received', 'packet_type', 'rorg')
         ignored = self._counter('packets_ignored', 'Packets from ignored devices, not delivered')
         sent = self._counter('packets_sent', 'Packets sent', 'packet_type', 'rorg')

@@ -1,5 +1,4 @@
-"""
-Runtime statistics and health of a communicator, always collected (no dependency, negligible cost).
+"""Runtime statistics and health of a communicator, always collected (no dependency, negligible cost).
 
 Read them with `communicator.stats.snapshot()` and `communicator.health()`, or expose them to Prometheus with
 `enocean.prometheus`.
@@ -19,6 +18,7 @@ PacketKind = tuple[int, int | None]
 
 
 def packet_kind(packet: Packet) -> PacketKind:
+    """The (packet type, RORG) statistics are counted by; RORG is None for non-radio packets."""
     return int(packet.packet_type), int(packet.rorg) if isinstance(packet, RadioPacket) else None
 
 
@@ -82,18 +82,21 @@ class CommunicatorStats:
     _senders_evicted: int = 0
 
     def enable_sender_tracking(self, max_senders: int = 500) -> None:
-        """
-        Also keep per-device statistics, for up to max_senders devices (the least recently heard ones are forgotten
-        beyond that, so neighbours' devices picked up by the radio can't grow memory or metric cardinality forever).
+        """Also keep per-device statistics (SenderStats), for up to max_senders devices.
+
+        Beyond that, the least recently heard devices are forgotten, so neighbours' devices picked up by the radio
+        can't grow memory or metric cardinality forever.
         """
         with self._lock:
             self._max_senders = max_senders
 
     def record_bytes_received(self, count: int) -> None:
+        """Count bytes read from the transport."""
         with self._lock:
             self._bytes_received += count
 
     def record_received(self, packet: Packet) -> None:
+        """Count a received packet, and its sender when per-sender tracking is enabled."""
         now = time.time()
         with self._lock:
             self._packets_received[packet_kind(packet)] += 1
@@ -115,43 +118,53 @@ class CommunicatorStats:
             self._senders_evicted += 1
 
     def record_ignored(self) -> None:
+        """Count a packet dropped because its device is ignored by the DeviceRegistry."""
         with self._lock:
             self._packets_ignored += 1
 
     def record_sent(self, packet: Packet, byte_count: int) -> None:
+        """Count a packet written to the transport, and its bytes."""
         with self._lock:
             self._packets_sent[packet_kind(packet)] += 1
             self._bytes_sent += byte_count
 
     def record_parse_error(self, kind: str) -> None:
+        """Count a parse error reported by Packet.parse_msg(on_error=...)."""
         with self._lock:
             self._parse_errors[kind] += 1
 
     def record_teach_in_response(self) -> None:
+        """Count a UTE teach-in response sent."""
         with self._lock:
             self._teach_in_responses += 1
 
     def record_base_id_request(self) -> None:
+        """Count a base ID request sent to the module."""
         with self._lock:
             self._base_id_requests += 1
 
     def record_base_id_received(self, seconds: float) -> None:
+        """Record how long the module took to answer the base ID request."""
         with self._lock:
             self._base_id_fetch_seconds = seconds
 
     def record_base_id_timeout(self) -> None:
+        """Count a base ID request the module did not answer in time."""
         with self._lock:
             self._base_id_timeouts += 1
 
     def record_transport_error(self) -> None:
+        """Count a transport failure (e.g. the serial port failing to read or write)."""
         with self._lock:
             self._transport_errors += 1
 
     def record_processing_error(self) -> None:
+        """Count an exception raised while processing received packets (e.g. by a callback)."""
         with self._lock:
             self._processing_errors += 1
 
     def snapshot(self) -> StatsSnapshot:
+        """A consistent copy of all the counters, safe to use from any thread."""
         with self._lock:
             return StatsSnapshot(
                 started_at=self.started_at,
@@ -188,4 +201,5 @@ class Health:
 
     @property
     def healthy(self) -> bool:
+        """Whether no problem was found."""
         return not self.problems

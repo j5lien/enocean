@@ -78,12 +78,14 @@ aujourd'hui) ; on **s'aligne sur les noms officiels** des champs (version 2.0).
 
 ## 4. Documentation de l'API
 
-- [ ] Docstrings sur toute l'API publique (54 classes/fonctions publiques sur 89 n'en ont pas) : paramètres, retour,
-      exceptions, exemple sur les points d'entrée ; règles ruff `D` en CI pour ne plus en oublier
-- [ ] Site de documentation (mkdocs + mkdocstrings, GitHub Pages) : concepts (ESP3, EEP, RORG/FUNC/TYPE, base ID,
-      teach-in), recettes (recevoir, décoder, envoyer, superviser, Docker avec `/dev/serial/by-id`), référence d'API
-      générée ; exemples exécutés en CI
-- [ ] Guide de migration 0.60 → 1.x → 2.0 (utile pour enocean-sniffer)
+- [x] Docstrings sur toute l'API publique (convention Google, paramètres/retour/exceptions sur les points d'entrée),
+      règles ruff `D` en CI
+- [x] Site de documentation (mkdocs-material + mkdocstrings, GitHub Pages) : concepts, guides, référence d'API
+      générée, exemples exécutés par les tests, construction stricte en CI
+- [ ] Activer GitHub Pages (Settings → Pages → Source : GitHub Actions) pour publier le site
+- [ ] MkDocs 2.0 annoncé incompatible avec les plugins (mkdocstrings, material) : épinglé `<2`, surveiller les
+      annonces de l'équipe Material for MkDocs
+- [x] Guide de migration 0.60 → 1.x → 2.0 (`docs/migration.md`)
 
 ## Tests
 

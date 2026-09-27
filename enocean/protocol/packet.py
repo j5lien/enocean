@@ -1,3 +1,5 @@
+"""ESP3 packets: parsing them from the serial stream, building them, decoding and encoding their EEP fields."""
+
 import datetime
 import logging
 import warnings
@@ -31,11 +33,19 @@ MALFORMED_PACKET = 'malformed'
 
 
 class Packet:
-    """
-    Base class for Packet.
-    Mainly used for for packet generation and
-    Packet.parse_msg(buf) for parsing message.
-    parse_msg() returns subclass, if one is defined for the data type.
+    """An ESP3 packet: its type, data and optional data bytes.
+
+    Packet.parse_msg() reads packets from the byte stream, returning the subclass matching their type (RadioPacket,
+    UTETeachInPacket, ResponsePacket, EventPacket); Packet.create() / RadioPacket.create() build radio telegrams from
+    EEP field values. Once a profile is applied (parse_eep()), `parsed` holds the decoded fields.
+
+    Args:
+        packet_type: The ESP3 packet type (PACKET).
+        data: The data bytes.
+        optional: The optional data bytes.
+
+    Raises:
+        TypeError: data or optional isn't a list of ints, bytes, bytearray or tuple.
     """
 
     eep = EEP()
@@ -135,13 +145,18 @@ class Packet:
     def parse_msg(
         buf: bytes | bytearray | list[int], on_error: Callable[[str], None] | None = None
     ) -> tuple[PARSE_RESULT, list[int], 'Packet | None']:
-        """
-        Parses message from buffer.
-        returns:
-            - PARSE_RESULT
-            - remaining buffer
-            - Packet -object (if message was valid, else None)
-        on_error, if given, is called with HEADER_CRC_ERROR, DATA_CRC_ERROR or MALFORMED_PACKET.
+        """Parse the first packet of a byte stream.
+
+        Bytes before the first sync byte (0x55) are dropped; on a CRC error only the sync byte is skipped, so parsing
+        resynchronizes on the next packet. Call it again on the remaining buffer until it returns INCOMPLETE.
+
+        Args:
+            buf: Bytes read from the module.
+            on_error: Called with HEADER_CRC_ERROR, DATA_CRC_ERROR or MALFORMED_PACKET on errors.
+
+        Returns:
+            (PARSE_RESULT, the remaining bytes, the packet or None): OK with a packet, INCOMPLETE if more bytes are
+            needed, CRC_MISMATCH if corrupted bytes were skipped.
         """
         # If the buffer doesn't contain 0x55 (start char)
         # the message isn't needed -> ignore
@@ -229,21 +244,28 @@ class Packet:
         learn: bool = False,
         **kwargs: Any,
     ) -> 'Packet':
+        """Build a radio telegram from the field values of its profile.
+
+        Args:
+            packet_type: Only PACKET.RADIO_ERP1 is supported.
+            rorg: The telegram type: RORG.RPS, BS1, BS4 or VLD.
+            rorg_func: The profile's FUNC.
+            rorg_type: The profile's TYPE.
+            direction: The direction, for profiles with direction-specific layouts.
+            command: The command, for profiles with several commands (e.g. D2-01-12).
+            destination: The recipient's ID; broadcast (FF:FF:FF:FF) by default.
+            sender: The ID to send from, e.g. the module's base ID; DE:AD:BE:EF by default.
+            learn: For 1BS and 4BS telegrams, send a teach-in telegram (learn bit).
+            **kwargs: The field values by shortcut: raw ints, enum descriptions or their labels, numbers for values
+                (see EEP().describe()).
+
+        Returns:
+            The packet, decoded as it will be received.
+
+        Raises:
+            ValueError: Unsupported packet type or RORG, invalid sender or destination, unknown enum value, or unknown
+                VLD profile.
         """
-        Creates an packet ready for sending.
-        Uses rorg, rorg_func and rorg_type to determine the values set based on EEP.
-        Additional arguments (**kwargs) are used for setting the values.
-
-        Currently only supports:
-            - PACKET.RADIO_ERP1
-            - RORGs RPS, BS1, BS4, VLD.
-
-        TODO:
-            - Require sender to be set? Would force the "correct" sender to be set.
-            - Do we need to set telegram control bits?
-              Might be useful for acting as a repeater?
-        """
-
         if packet_type != PACKET.RADIO_ERP1:
             # At least for now, only support PACKET.RADIO_ERP1.
             raise ValueError('Packet type not supported by this function.')
@@ -316,9 +338,9 @@ class Packet:
         return parsed_packet
 
     def _apply_conditions(self, given: Mapping[str, Any]) -> None:
-        """
-        Sets the data and status bits the selected variant requires, so the telegram decodes as that variant, except
-        for fields given explicitly (e.g. ECID when several variants share a command).
+        """Set the data and status bits the selected variant requires, so the telegram decodes as that variant.
+
+        Fields given explicitly are left alone (e.g. ECID when several variants share a command).
         """
         if self._profile is None:
             return
@@ -333,9 +355,10 @@ class Packet:
                 self._bit_data = EEP._set_raw(condition, value, self._bit_data)
 
     def _select_variant_for(self, values: Mapping[str, Any]) -> None:
-        """
-        Among the variants sharing the selected one's command, the most specific one whose condition fields match the
-        values given (e.g. D2-01 command 15 with ECID=1), so create() can build any of them.
+        """Select, among the variants sharing the selected one's command, the one matching the values given.
+
+        The most specific one whose condition fields match (e.g. D2-01 command 15 with ECID=1), so create() can build
+        any of them.
         """
         if self._profile is None or self._profile.find('condition') is None or self.rorg_func is None:
             return
@@ -360,10 +383,11 @@ class Packet:
         return self._profile is not None and self._profile.find('condition') is not None
 
     def _command_field(self, rorg: int, rorg_func: int, rorg_type: int) -> str | Element | None:
-        """
-        Where create() writes the command id: the shortcut of the selected variant's own command field (named after the
-        profile's <command>, e.g. CMD or COM), else the profile-level <command> element itself (e.g. A5-13-01, whose
-        variants have no command field), or None for profiles without commands.
+        """Where create() writes the command id.
+
+        The shortcut of the selected variant's own command field (named after the profile's <command>, e.g. CMD or
+        COM), else the profile-level <command> element itself (for variants without a command field), or None for
+        profiles without commands.
         """
         profile = self.eep.telegrams.get(rorg, {}).get(rorg_func, {}).get(rorg_type)
         eep_command = profile.find('command') if profile is not None else None
@@ -375,7 +399,7 @@ class Packet:
         return eep_command
 
     def parse(self) -> OrderedDict[str, FieldValue]:
-        """Parse data from Packet"""
+        """Read the fields common to the packet type (e.g. sender, status); called on construction."""
         # Parse status from messages
         if self.rorg in [RORG.RPS, RORG.BS1, RORG.BS4]:
             self.status = self.data[-1]
@@ -390,7 +414,17 @@ class Packet:
     def select_eep(
         self, rorg_func: int, rorg_type: int, direction: int | None = None, command: int | None = None
     ) -> bool:
-        """Set EEP based on FUNC and TYPE"""
+        """Select the profile (and its variant) to decode or encode the telegram with.
+
+        Args:
+            rorg_func: The profile's FUNC (the RORG is the telegram's).
+            rorg_type: The profile's TYPE.
+            direction: The direction, for profiles with direction-specific layouts.
+            command: The command variant; by default it is recognized from the telegram.
+
+        Returns:
+            Whether the profile is known.
+        """
         # set EEP profile
         self.rorg_func = rorg_func
         self.rorg_type = rorg_type
@@ -406,7 +440,17 @@ class Packet:
         direction: int | None = None,
         command: int | None = None,
     ) -> list[str]:
-        """Parse EEP based on FUNC and TYPE"""
+        """Decode the telegram's fields into `parsed`.
+
+        Args:
+            rorg_func: The profile's FUNC; if omitted, the profile selected before (select_eep()) is used.
+            rorg_type: The profile's TYPE.
+            direction: See select_eep().
+            command: See select_eep().
+
+        Returns:
+            The shortcuts of the decoded fields.
+        """
         # set EEP profile, if demanded
         if rorg_func is not None and rorg_type is not None:
             self.select_eep(rorg_func, rorg_type, direction, command)
@@ -416,7 +460,7 @@ class Packet:
         return list(provides)
 
     def set_eep(self, data: dict[str, Any]) -> None:
-        """Update packet data based on EEP. Input data is a dictionary with keys corresponding to the EEP."""
+        """Encode field values, by shortcut, into the telegram with the selected profile."""
         self._bit_data, self._bit_status = self.eep.set_values(self._profile, self._bit_data, self._bit_status, data)
 
     @property
@@ -434,9 +478,10 @@ class Packet:
         return int(self._profile.get('command', 0))
 
     def to_dict(self) -> dict[str, Any]:
-        """
-        JSON-serializable view of the packet: hex strings for bytes and IDs, enum names (hex for unknown values),
-        ISO 8601 reception time and, once decoded, the EEP and field values.
+        """JSON-serializable view of the packet.
+
+        Hex strings for bytes and IDs, enum names (hex for unknown values), ISO 8601 reception time and, once decoded,
+        the EEP and field values.
         """
         return {
             'packet_type': enum_name(PACKET, self.packet_type),
@@ -446,7 +491,7 @@ class Packet:
         }
 
     def build(self) -> list[int]:
-        """Build Packet for sending to EnOcean controller"""
+        """The packet's ESP3 bytes, with header and CRCs, as written to the module."""
         data_length = len(self.data)
         ords = [0x55, (data_length >> 8) & 0xFF, data_length & 0xFF, len(self.optional), int(self.packet_type)]
         ords.append(crc8.calc(ords[1:5]))
@@ -457,8 +502,7 @@ class Packet:
 
 
 class RadioPacket(Packet):
-    """
-    A radio telegram (ERP1).
+    """A radio telegram (ERP1).
 
     Attributes set when parsing: `sender` / `destination` (4-byte IDs, also as `sender_hex` / `destination_hex`),
     `dbm` (signal strength of the received telegram, None if the module didn't report it) and `learn`.
@@ -498,6 +542,7 @@ class RadioPacket(Packet):
         learn: bool = False,
         **kwargs: Any,
     ) -> 'RadioPacket':
+        """Build a radio telegram (ERP1): see Packet.create(), without its packet_type argument."""
         packet = Packet.create(
             PACKET.RADIO_ERP1, rorg, rorg_func, rorg_type, direction, command, destination, sender, learn, **kwargs
         )
@@ -505,6 +550,7 @@ class RadioPacket(Packet):
         return packet
 
     def to_dict(self) -> dict[str, Any]:
+        """See Packet.to_dict(); adds the radio fields, the EEP, the decoded values and the device."""
         eep_id = self.eep_id
         return {
             **super().to_dict(),
@@ -523,21 +569,26 @@ class RadioPacket(Packet):
 
     @property
     def sender_int(self) -> int:
+        """The sender's ID as an integer."""
         return enocean.utils.combine_hex(self.sender)
 
     @property
     def sender_hex(self) -> str:
+        """The sender's ID as text, e.g. '05:99:77:AF'."""
         return enocean.utils.to_hex_string(self.sender)
 
     @property
     def destination_int(self) -> int:
+        """The destination ID as an integer."""
         return enocean.utils.combine_hex(self.destination)
 
     @property
     def destination_hex(self) -> str:
+        """The destination ID as text; 'FF:FF:FF:FF' for broadcast telegrams."""
         return enocean.utils.to_hex_string(self.destination)
 
     def parse(self) -> OrderedDict[str, FieldValue]:
+        """Read sender, destination, signal strength and learn bit; see Packet.parse()."""
         # Optional data (sub-telegram count, destination, dBm, security level) may be omitted
         if len(self.optional) >= 6:
             self.destination = self.optional[1:5]
@@ -572,6 +623,11 @@ class RadioPacket(Packet):
 
 
 class UTETeachInPacket(RadioPacket):
+    """A Universal Teach-in (UTE) request: a device asking to be taught in (or out), announcing its profile.
+
+    Communicators answer them (see Communicator.learn()); `eep_id` is the announced profile.
+    """
+
     # Request types
     TEACH_IN = 0b00
     DELETE = 0b01
@@ -599,6 +655,7 @@ class UTETeachInPacket(RadioPacket):
         return EEPId(self.rorg_of_eep, self.rorg_func, self.rorg_type)
 
     def to_dict(self) -> dict[str, Any]:
+        """See RadioPacket.to_dict(); adds the teach-in request fields."""
         return {
             **super().to_dict(),
             'teach_in': {
@@ -620,17 +677,21 @@ class UTETeachInPacket(RadioPacket):
 
     @property
     def bidirectional(self) -> bool:
+        """Whether the device expects bidirectional communication."""
         return not self.unidirectional
 
     @property
     def teach_in(self) -> bool:
+        """Whether the request may be a teach-in (a teach-in or a not-specific request)."""
         return self.request_type != self.DELETE
 
     @property
     def delete(self) -> bool:
+        """Whether the request is a deletion (teach-out)."""
         return self.request_type == self.DELETE
 
     def parse(self) -> OrderedDict[str, FieldValue]:
+        """Read the request: type, announced profile, manufacturer, channels."""
         super().parse()
         self.unidirectional = not self._bit_data[DB6.BIT_7]
         self.response_expected = not self._bit_data[DB6.BIT_6]
@@ -648,6 +709,15 @@ class UTETeachInPacket(RadioPacket):
         return self.parsed
 
     def create_response_packet(self, sender_id: list[int], response: list[bool] = TEACHIN_ACCEPTED) -> RadioPacket:
+        """The UTE response to this request.
+
+        Args:
+            sender_id: The ID to answer from, usually the module's base ID.
+            response: TEACHIN_ACCEPTED, DELETE_ACCEPTED, EEP_NOT_SUPPORTED or NOT_ACCEPTED.
+
+        Returns:
+            The response packet, addressed to the requesting device.
+        """
         # Create data:
         # - Respond with same RORG (UTE Teach-in)
         # - Always use bidirectional communication, set response code, set command identifier.
@@ -668,15 +738,19 @@ class UTETeachInPacket(RadioPacket):
 
 
 class ResponsePacket(Packet):
+    """The module's response to a command: `response` is the return code (RETURN_CODE), `response_data` the rest."""
+
     response = 0
     response_data: list[int] = []
 
     def parse(self) -> OrderedDict[str, FieldValue]:
+        """Read the return code and the response data."""
         self.response = self.data[0]
         self.response_data = self.data[1:]
         return super().parse()
 
     def to_dict(self) -> dict[str, Any]:
+        """See Packet.to_dict(); adds the return code and response data."""
         return {
             **super().to_dict(),
             'return_code': enum_name(RETURN_CODE, self.response),
@@ -685,15 +759,19 @@ class ResponsePacket(Packet):
 
 
 class EventPacket(Packet):
+    """An event reported by the module: `event` is the event code (EVENT_CODE), `event_data` the rest."""
+
     event = 0
     event_data: list[int] = []
 
     def parse(self) -> OrderedDict[str, FieldValue]:
+        """Read the event code and data."""
         self.event = self.data[0]
         self.event_data = self.data[1:]
         return super().parse()
 
     def to_dict(self) -> dict[str, Any]:
+        """See Packet.to_dict(); adds the event code and data."""
         return {
             **super().to_dict(),
             'event_code': enum_name(EVENT_CODE, self.event),
