@@ -104,6 +104,15 @@ for transport failures, `logger.exception` for errors raised while processing pa
 lazy `%s` args, never pre-formatted strings, and `extra=packet_log_fields(packet)` on packet-related records so
 structured handlers get `packet_type`/`rorg`/`sender`/`dbm`.
 
+## Documentation
+
+`docs/` is a mkdocs-material site (`mkdocs.yml`, `make docs` to serve, `make docs-build` for a strict build, published
+to GitHub Pages by `.github/workflows/docs.yml`); the API reference is generated from docstrings by mkdocstrings, so
+every public module, class and function needs a Google-style docstring (ruff `D` rules enforce it on the package).
+Runnable examples live in `docs/examples/*.py` and are included in pages with `--8<-- "file.py"`; `test_docs.py` runs
+them and checks every Python block of the pages and README parses and imports existing names. `docs/**/*.md` is
+excluded from ruff: its formatter rewrites the snippet markers.
+
 ## Releasing
 
 Not published to PyPI. Update `CHANGELOG.md` (new `## [x.y.z] - date` section) and `version` in `pyproject.toml`,
