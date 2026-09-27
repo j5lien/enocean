@@ -12,7 +12,7 @@ logging.getLogger(__name__).addHandler(logging.NullHandler())
 
 from enocean.communicators import Communicator, SerialCommunicator, TCPCommunicator  # noqa: E402
 from enocean.protocol.constants import EVENT_CODE, PACKET, PARSE_RESULT, RETURN_CODE, RORG  # noqa: E402
-from enocean.protocol.eep import EEP, EEPId, FieldValue  # noqa: E402
+from enocean.protocol.eep import EEP, EEPId, FieldDescription, FieldValue, ProfileDescription  # noqa: E402
 from enocean.protocol.packet import (  # noqa: E402
     EventPacket,
     Packet,
@@ -38,9 +38,11 @@ __all__ = [
     'Communicator',
     'CommunicatorStats',
     'EventPacket',
+    'FieldDescription',
     'FieldValue',
     'Health',
     'Packet',
+    'ProfileDescription',
     'RadioPacket',
     'ResponsePacket',
     'SenderStats',

@@ -1,8 +1,8 @@
 import logging
 import os
 from collections import OrderedDict
-from collections.abc import Iterable, Mapping
-from dataclasses import dataclass
+from collections.abc import Iterable, Iterator, Mapping
+from dataclasses import dataclass, field
 from typing import Any, TypedDict
 from xml.etree import ElementTree
 from xml.etree.ElementTree import Element
@@ -58,6 +58,64 @@ def _float_text(element: Element, path: str) -> float:
 def _range_and_scale(element: Element) -> tuple[float, float, float, float]:
     rng, scl = _child(element, 'range'), _child(element, 'scale')
     return _float_text(rng, 'min'), _float_text(rng, 'max'), _float_text(scl, 'min'), _float_text(scl, 'max')
+
+
+@dataclass(frozen=True)
+class FieldDescription:
+    """One field of a profile variant, as defined in EEP.xml."""
+
+    shortcut: str
+    description: str | None
+    # 'value' (linear raw -> scaled number), 'enum' (raw -> description) or 'status' (bit of the status byte)
+    kind: str
+    offset: int
+    size: int
+    unit: str
+    # value fields: raw range and the scaled range it maps to
+    raw_range: tuple[float, float] | None = None
+    scale: tuple[float, float] | None = None
+    # enum fields: descriptions by raw value, and (start, end, description) raw value ranges
+    items: Mapping[int, str] = field(default_factory=dict)
+    ranges: tuple[tuple[int, int, str], ...] = ()
+
+
+@dataclass(frozen=True)
+class ProfileDescription:
+    """One variant (per direction or command) of a profile."""
+
+    eep_id: EEPId
+    description: str | None
+    function: str | None
+    direction: int | None
+    command: int | None
+    # Telegram payload length in bytes, for VLD profiles
+    length: int | None
+    fields: tuple[FieldDescription, ...]
+
+    def field(self, shortcut: str) -> FieldDescription:
+        return next(f for f in self.fields if f.shortcut == shortcut)
+
+
+def _describe_field(tag: Element) -> FieldDescription:
+    raw_range = scale = None
+    if tag.tag == 'value':
+        rng_min, rng_max, scl_min, scl_max = _range_and_scale(tag)
+        raw_range, scale = (rng_min, rng_max), (scl_min, scl_max)
+    return FieldDescription(
+        shortcut=_attr(tag, 'shortcut'),
+        description=tag.get('description'),
+        kind=tag.tag,
+        offset=int(_attr(tag, 'offset')),
+        size=int(_attr(tag, 'size')),
+        unit=tag.get('unit', ''),
+        raw_range=raw_range,
+        scale=scale,
+        items={int(_attr(item, 'value')): item.get('description', '') for item in tag.findall('item')},
+        ranges=tuple(
+            (int(_attr(item, 'start')), int(_attr(item, 'end')), item.get('description', ''))
+            for item in tag.findall('rangeitem')
+        ),
+    )
 
 
 class EEP:
@@ -202,6 +260,43 @@ class EEP:
         """set given value to target bit in bitarray"""
         bitarray[int(_attr(target, 'offset'))] = data
         return bitarray
+
+    def profiles(self) -> Iterator[EEPId]:
+        """Every profile defined in EEP.xml."""
+        for rorg, functions in sorted(self.telegrams.items()):
+            for func, types in sorted(functions.items()):
+                for type_ in sorted(types):
+                    yield EEPId(rorg, func, type_)
+
+    def describe(self, eep_id: EEPId | str) -> tuple[ProfileDescription, ...]:
+        """
+        The fields of a profile, one ProfileDescription per variant (direction or command), e.g.
+        `EEP().describe('D2-01-12')`. Raises KeyError for an unknown profile.
+        """
+        eep_id = EEPId.parse(eep_id)
+        profile = self.telegrams[eep_id.rorg][eep_id.func][eep_id.type]
+        function = next(
+            (
+                f.get('description')
+                for telegram in self.xml_root.iter('telegram')
+                if int(_attr(telegram, 'rorg'), 16) == eep_id.rorg
+                for f in telegram.iter('profiles')
+                if int(_attr(f, 'func'), 16) == eep_id.func
+            ),
+            None,
+        )
+        return tuple(
+            ProfileDescription(
+                eep_id=eep_id,
+                description=profile.get('description'),
+                function=function,
+                direction=int(data.get('direction', 0)) if data.get('direction') else None,
+                command=int(data.get('command', 0)) if data.get('command') else None,
+                length=int(data.get('bits', 0)) if data.get('bits') else None,
+                fields=tuple(_describe_field(tag) for tag in data if tag.tag in ('value', 'enum', 'status')),
+            )
+            for data in profile.findall('data')
+        )
 
     def find_profile(
         self,
