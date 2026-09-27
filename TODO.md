@@ -15,8 +15,7 @@ Bugs :
 - [x] `RadioPacket.learn` documenté : toujours `True` pour RPS et VLD (pas de bit d'apprentissage, tout télégramme
       peut servir au teach-in) ; le passer à `None` casserait les applications qui s'en servent pour l'appairage
 - [x] `packet.received` : horodatage UTC avec fuseau, posé par `parse_msg()` (était naïf et posé par le communicator)
-- [ ] `SerialCommunicator` n'accepte pas `teach_in` (le sniffer le modifie après `start()`, avec une course possible)
-      et son port par défaut est `/dev/ttyAMA0` (UART de Raspberry Pi)
+- [x] `SerialCommunicator` accepte `teach_in` et son port est obligatoire (défaut `/dev/ttyAMA0`, UART de Raspberry Pi)
 - [x] Setter de `base_id` documenté pour ses vrais usages (ID déjà connu)
 - [x] A5-04-02 : plage brute de la température corrigée (0..250, confirmé par la spec EEP 2.6.7)
 - [ ] `TCPCommunicator` est en réception seule (`send()` sans effet, réponses teach-in non transmises) et ne sert

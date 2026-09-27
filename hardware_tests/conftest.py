@@ -28,9 +28,8 @@ def config() -> dict[str, str]:
 
 @pytest.fixture(scope='session')
 def communicator(config: dict[str, str]) -> Iterator[SerialCommunicator]:
-    communicator = SerialCommunicator(port=config['ENOCEAN_PORT'])
     # Only listen: never answer other devices' teach-in requests over the air
-    communicator.teach_in = False
+    communicator = SerialCommunicator(port=config['ENOCEAN_PORT'], teach_in=False)
     communicator.stats.enable_sender_tracking()
     communicator.start()
     yield communicator
