@@ -10,7 +10,7 @@ test:
 	uv run pytest
 
 test-hardware:  ## Tests against the real EnOcean stick configured in .env (some ask you to press a switch)
-	uv run pytest hardware_tests -m hardware -v
+	uv run pytest hardware_tests -m hardware -vv
 
 PY ?= 3.14
 test-linux:  ## Run the test suite in a Linux container (make test-linux PY=3.10)
