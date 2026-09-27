@@ -24,3 +24,4 @@ pip-selfcheck.json
 coverage.xml
 htmlcov/
 .hypothesis/
+.env

@@ -17,6 +17,7 @@ make install       # uv sync: creates .venv with the package (editable) + dev de
 make hooks         # install pre-commit hooks (ruff, mypy, uv.lock, SUPPORTED_PROFILES.md)
 make test          # uv run pytest
 make test-linux    # same, in a Linux Docker container (PY=3.10 to pick the version)
+make test-hardware # against a real stick configured in .env (copy .env.example); interactive ones ask to press a switch
 make test-timing   # WITH_TIMINGS=1, enables @timing-decorated rounds/limits
 make cov           # pytest with coverage
 make lint          # ruff check + ruff format --check + mypy --strict on the package (config in pyproject.toml)
@@ -30,6 +31,14 @@ uv run pytest enocean/protocol/tests/test_packet.py::test_packet_examples
 ```
 
 Tests are plain pytest functions (no classes); use `pytest.raises` for expected exceptions.
+
+Hardware tests (`hardware_tests/`, markers `hardware` and `interactive`) run against a real stick and real devices
+configured in `.env` (git-ignored; `.env.example` documents the keys, environment variables override it). They are
+deselected by default (`addopts`), skipped when the stick isn't configured or plugged in, never run in CI (and can't
+run in Docker on macOS: no USB passthrough), and only listen (teach-in auto-answers off, nothing sent over the air).
+Helpers live in `hardware_tests/stick.py`, not `conftest.py`, because another test directory has a `conftest` module.
+`enocean/protocol/tests/test_real_frames.py` holds telegrams captured from real devices, checked against what the
+devices did: add captures there when validating a profile.
 
 Communicator end-to-end tests (`enocean/communicators/tests/test_{serial,tcp}_communicator.py`) run the real
 communicator threads with no hardware: a pseudo-terminal stands in for the EnOcean serial module (tests act as
