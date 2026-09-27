@@ -8,7 +8,7 @@ from typing import TypeGuard
 
 from enocean.protocol.constants import PACKET, PARSE_RESULT, RETURN_CODE
 from enocean.protocol.packet import Packet, RadioPacket, ResponsePacket, UTETeachInPacket
-from enocean.stats import CommunicatorStats
+from enocean.stats import CommunicatorStats, Health
 from enocean.utils import to_hex_string
 
 
@@ -51,6 +51,8 @@ class Communicator(threading.Thread):
         self._pending_teach_ins: list[UTETeachInPacket] = []
         # Runtime statistics, see enocean.stats
         self.stats = CommunicatorStats()
+        # Set by transports while their port/socket is usable
+        self._transport_ready = False
         # Should new messages be learned automatically? Defaults to True.
         # TODO: Not sure if we should use CO_WR_LEARNMODE??
         self.teach_in = teach_in
@@ -148,6 +150,31 @@ class Communicator(threading.Thread):
             self.stats.record_base_id_request()
             # Send COMMON_COMMAND 0x08, CO_RD_IDBASE request to the module
             self.send(Packet(PACKET.COMMON_COMMAND, data=[0x08]))
+
+    def health(self, max_silence: float | None = None) -> Health:
+        """
+        Current state, e.g. for a liveness/readiness probe. With max_silence (seconds), going that long without
+        receiving any packet counts as a problem (after startup, the delay counts from the communicator's creation).
+        """
+        snapshot = self.stats.snapshot()
+        silence = time.time() - (snapshot.last_packet_received_at or snapshot.started_at)
+        running = self.is_alive() and not self._stop_flag.is_set()
+        problems = []
+        if not running:
+            problems.append('communicator thread is not running')
+        if not self._transport_ready:
+            problems.append('transport is not ready')
+        if max_silence is not None and silence > max_silence:
+            problems.append('no packet received for %.0f s' % silence)
+        return Health(
+            running=running,
+            transport_ready=self._transport_ready,
+            base_id_known=self._base_id is not None,
+            receive_queue_size=self.receive.qsize(),
+            transmit_queue_size=self.transmit.qsize(),
+            seconds_since_last_packet=silence,
+            problems=tuple(problems),
+        )
 
     @property
     def base_id(self) -> list[int] | None:

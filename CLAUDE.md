@@ -62,6 +62,9 @@ updated by the communicator thread (packets/bytes received and sent, parse error
 requests/timeouts/latency, transport and processing errors, last packet time), read through `stats.snapshot()`.
 `Packet.parse_msg(buf, on_error=...)` reports parse error kinds without coupling the protocol layer to stats.
 Transports must push received bytes through `Communicator._feed()` so they are counted.
+`communicator.health(max_silence=None)` returns a `Health` (running, transport ready, base ID known, queue sizes,
+seconds since last packet, `problems`/`healthy`); transports set `self._transport_ready` while their port/socket is
+usable.
 
 ## Logging conventions
 

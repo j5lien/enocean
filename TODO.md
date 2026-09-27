@@ -33,7 +33,6 @@ Remise à niveau du fork `j5lien/enocean`. Cocher au fur et à mesure.
       réponses teach-in envoyées, durée et échecs de récupération du base ID, déconnexions du port série,
       ancienneté du dernier paquet reçu ; par émetteur (dernier vu, dBm) seulement en option, à cause de la
       cardinalité des labels
-- [ ] Santé : état exploitable pour une sonde (thread vivant, port ouvert, dernier paquet reçu il y a N s)
 
 ## Dépôt GitHub
 
@@ -71,3 +70,4 @@ Remise à niveau du fork `j5lien/enocean`. Cocher au fur et à mesure.
 - [x] Fork détaché de `kipe/enocean`, `main` protégée
 - [x] Logs : niveaux revus (bruit radio en DEBUG, télégramme corrompu en WARNING, traces complètes des erreurs de
       callback), `NullHandler`, champs structurés (`packet_type`, `rorg`, `sender`, `dbm`), `init_logging(json_format=True)`
+- [x] Statistiques internes (`communicator.stats`) et santé (`communicator.health()`), sans dépendance

@@ -259,3 +259,26 @@ def test_ute_teach_in_fetches_unknown_base_id_then_answers(pty_port, running):
     assert response.destination_hex == '01:94:E3:B9'
     assert isinstance(com.receive.get(timeout=TIMEOUT), UTETeachInPacket)
     assert wait_until(lambda: com.stats.snapshot().teach_in_responses == 1)
+
+
+def test_health(pty_port, running):
+    module, port = pty_port
+    com = SerialCommunicator(port=port)
+    assert com.health().problems == ('communicator thread is not running',)
+
+    running(com)
+    health = com.health()
+    assert health.healthy and health.running and health.transport_ready
+    assert not health.base_id_known
+    assert com.health(max_silence=0).problems[0].startswith('no packet received for')
+
+    module.write(RADIO_FRAME)
+    assert wait_until(lambda: com.health().receive_queue_size == 1)
+    assert com.health().seconds_since_last_packet < 1
+    assert com.health(max_silence=10).healthy
+
+    os.close(module.fd)
+    com.join(TIMEOUT)
+    health = com.health()
+    assert not health.healthy
+    assert set(health.problems) == {'communicator thread is not running', 'transport is not ready'}

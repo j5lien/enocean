@@ -1,7 +1,8 @@
 """
-Runtime statistics of a communicator, always collected (no dependency, negligible cost).
+Runtime statistics and health of a communicator, always collected (no dependency, negligible cost).
 
-Read them with `communicator.stats.snapshot()`, or expose them to Prometheus with `enocean.prometheus`.
+Read them with `communicator.stats.snapshot()` and `communicator.health()`, or expose them to Prometheus with
+`enocean.prometheus`.
 """
 
 import threading
@@ -118,3 +119,21 @@ class CommunicatorStats:
                 processing_errors=self._processing_errors,
                 last_packet_received_at=self._last_packet_received_at,
             )
+
+
+@dataclass(frozen=True)
+class Health:
+    """State of a communicator, for liveness/readiness probes. `problems` explains why it is not healthy."""
+
+    running: bool
+    transport_ready: bool
+    base_id_known: bool
+    receive_queue_size: int
+    transmit_queue_size: int
+    # Seconds since the last received packet, or since the communicator was created if none was received yet
+    seconds_since_last_packet: float
+    problems: tuple[str, ...]
+
+    @property
+    def healthy(self) -> bool:
+        return not self.problems
