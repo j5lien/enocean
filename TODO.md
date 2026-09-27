@@ -4,9 +4,9 @@ Remise à niveau du fork `j5lien/enocean`. Cocher au fur et à mesure.
 
 ## Tests
 
-- [ ] Trames réelles capturées sur tes appareils (D2-01-12, D2-14-30, D2-14-41, …) avec les valeurs affichées par
-      l'appareil, pour valider le décodage contre la réalité (les tests actuels vérifient la cohérence d'`EEP.xml`
-      et figent le décodage, pas sa conformité à la spec)
+- [ ] Compléter `test_real_frames.py` avec d'autres appareils : volets D2-05-00, compteur EWattch A5-12-01,
+      détecteur de fumée D2-14-30 ; vérifier A5-04-02 (plage de température 0..255 au lieu de 0..250 dans la spec ?)
+- [ ] Test matériel optionnel avec émission radio (après teach-in de la clé sur un actionneur de test)
 - [ ] Décider du sort des tests `@timing` (inactifs sans `WITH_TIMINGS=1`) : les supprimer ou passer à `pytest-benchmark`
 
 ## Bugs
@@ -67,3 +67,5 @@ Remise à niveau du fork `j5lien/enocean`. Cocher au fur et à mesure.
 - [x] Adaptateur Prometheus optionnel (`enocean[prometheus]`, `enocean.prometheus.register()`) : namespace, labels
       constants, registry et plusieurs communicators configurables
 - [x] Métriques par émetteur (paquets, dernier vu, dBm) en option et bornées (`per_sender=True`, `max_senders`)
+- [x] Tests matériels sur une vraie clé (`make test-hardware`, config `.env`, test interactif interrupteur → lumière)
+      et trames réelles en tests CI (PTM 210 F6-02-02, SIN-2-2-01 D2-01-12)
