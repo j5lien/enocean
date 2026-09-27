@@ -118,3 +118,14 @@ def test_exception_in_callback_does_not_kill_communicator(free_tcp_port, running
         time.sleep(0.01)
     assert len(received) == 2
     assert com.is_alive()
+
+
+def test_health(free_tcp_port, running):
+    com = running(TCPCommunicator(host='127.0.0.1', port=free_tcp_port))
+    connect(free_tcp_port).close()  # listening
+
+    assert com.health().healthy
+
+    com.stop()
+    com.join(TIMEOUT)
+    assert not com.health().transport_ready

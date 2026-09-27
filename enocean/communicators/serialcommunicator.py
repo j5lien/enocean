@@ -17,6 +17,7 @@ class SerialCommunicator(Communicator):
         super().__init__(callback)
         # Initialize serial port
         self.__ser = serial.Serial(port, 57600, timeout=0.1)
+        self._transport_ready = True
 
     def run(self) -> None:
         self.logger.info('SerialCommunicator started')
@@ -33,6 +34,7 @@ class SerialCommunicator(Communicator):
                 except serial.SerialException:
                     self.logger.error('Serial port exception while writing! (device disconnected?)')
                     self.stats.record_transport_error()
+                    self._transport_ready = False
                     self.stop()
                 else:
                     self.stats.record_sent(packet, len(data))
@@ -43,6 +45,7 @@ class SerialCommunicator(Communicator):
             except serial.SerialException:
                 self.logger.error('Serial port exception! (device disconnected or multiple access on port?)')
                 self.stats.record_transport_error()
+                self._transport_ready = False
                 self.stop()
 
             try:
@@ -55,4 +58,5 @@ class SerialCommunicator(Communicator):
             time.sleep(0)
 
         self.__ser.close()
+        self._transport_ready = False
         self.logger.info('SerialCommunicator stopped')
