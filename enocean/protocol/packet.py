@@ -114,19 +114,22 @@ class Packet(object):
             return PARSE_RESULT.INCOMPLETE, [], None
 
         # Valid buffer starts from 0x55
-        # Convert to list, as index -method isn't defined for bytearray
-        try:
-            buf = [ord(x) if not isinstance(x, int) else x for x in buf[list(buf).index(0x55):]]
-        except Exception as e:
-            Packet.logger.error(f'Error converting buffer to list: {e}')
+        buf = list(buf)
+        buf = buf[buf.index(0x55):]
+
+        # Sync byte + 4 header bytes + header CRC
+        if len(buf) < 6:
             return PARSE_RESULT.INCOMPLETE, buf, None
 
-        try:
-            data_len = (buf[1] << 8) | buf[2]
-            opt_len = buf[3]
-        except IndexError:
-            # If the fields don't exist, message is incomplete
-            return PARSE_RESULT.INCOMPLETE, buf, None
+        # Check the header CRC before trusting the lengths it announces: a stray 0x55 or a corrupted header
+        # would otherwise make us wait for, and then drop, bytes belonging to the following valid packets.
+        if buf[5] != crc8.calc(buf[1:5]):
+            Packet.logger.error('Header CRC error!')
+            # Skip only the sync byte and resynchronize on the next 0x55
+            return PARSE_RESULT.CRC_MISMATCH, buf[1:], None
+
+        data_len = (buf[1] << 8) | buf[2]
+        opt_len = buf[3]
 
         # Header: 6 bytes, data, optional data and data checksum
         msg_len = 6 + data_len + opt_len + 1
@@ -135,41 +138,32 @@ class Packet(object):
             return PARSE_RESULT.INCOMPLETE, buf, None
 
         msg = buf[0:msg_len]
-        buf = buf[msg_len:]
-
         packet_type = msg[4]
         data = msg[6:6 + data_len]
         opt_data = msg[6 + data_len:6 + data_len + opt_len]
 
-        # Check CRCs for header and data
-        if msg[5] != crc8.calc(msg[1:5]):
-            # Fail if doesn't match message
-            Packet.logger.error('Header CRC error!')
-            # Return CRC_MISMATCH
-            return PARSE_RESULT.CRC_MISMATCH, buf, None
-        if msg[6 + data_len + opt_len] != crc8.calc(msg[6:6 + data_len + opt_len]):
-            # Fail if doesn't match message
+        if msg[-1] != crc8.calc(msg[6:-1]):
             Packet.logger.error('Data CRC error!')
-            # Return CRC_MISMATCH
-            return PARSE_RESULT.CRC_MISMATCH, buf, None
+            # The message may be a truncated packet running into the next one: skip only the sync byte
+            return PARSE_RESULT.CRC_MISMATCH, buf[1:], None
 
-        # If we got this far, everything went ok (?)
+        buf = buf[msg_len:]
+
+        packet_class = Packet
+        if packet_type == PACKET.RADIO_ERP1:
+            # Need to handle UTE Teach-in here, as it's a separate packet type...
+            packet_class = UTETeachInPacket if data and data[0] == RORG.UTE else RadioPacket
+        elif packet_type == PACKET.RESPONSE:
+            packet_class = ResponsePacket
+        elif packet_type == PACKET.EVENT:
+            packet_class = EventPacket
+
         try:
-            if packet_type == PACKET.RADIO_ERP1:
-                # Need to handle UTE Teach-in here, as it's a separate packet type...
-                if data[0] == RORG.UTE:
-                    packet = UTETeachInPacket(packet_type, data, opt_data)
-                else:
-                    packet = RadioPacket(packet_type, data, opt_data)
-            elif packet_type == PACKET.RESPONSE:
-                packet = ResponsePacket(packet_type, data, opt_data)
-            elif packet_type == PACKET.EVENT:
-                packet = EventPacket(packet_type, data, opt_data)
-            else:
-                packet = Packet(packet_type, data, opt_data)
-        except Exception as e:
-            Packet.logger.error(f'Error creating packet: {e}')
-            return PARSE_RESULT.CRC_MISMATCH, buf, None
+            packet = packet_class(packet_type, data, opt_data)
+        except (IndexError, ValueError):
+            # Valid on the wire, but too short for what its type requires: keep the raw bytes
+            Packet.logger.warning('Malformed %s packet, returning it unparsed.', packet_class.__name__, exc_info=True)
+            packet = Packet(packet_type, data, opt_data)
 
         return PARSE_RESULT.OK, buf, packet
 
@@ -260,7 +254,7 @@ class Packet(object):
         # Parse status from messages
         if self.rorg in [RORG.RPS, RORG.BS1, RORG.BS4]:
             self.status = self.data[-1]
-        if self.rorg == RORG.VLD:
+        if self.rorg == RORG.VLD and self.optional:
             self.status = self.optional[-1]
 
         if self.rorg in [RORG.RPS, RORG.BS1, RORG.BS4]:
@@ -335,8 +329,10 @@ class RadioPacket(Packet):
         return enocean.utils.to_hex_string(self.destination)
 
     def parse(self):
-        self.destination = self.optional[1:5]
-        self.dBm = -self.optional[5]
+        # Optional data (sub-telegram count, destination, dBm, security level) may be omitted
+        if len(self.optional) >= 6:
+            self.destination = self.optional[1:5]
+            self.dBm = -self.optional[5]
         self.sender = self.data[-5:-1]
         # Default to learn == True, as some devices don't have a learn button
         self.learn = True
