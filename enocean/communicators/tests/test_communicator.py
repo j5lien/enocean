@@ -1,4 +1,3 @@
-
 from enocean.communicators.communicator import Communicator
 from enocean.decorators import timing
 from enocean.protocol.constants import PACKET
@@ -7,7 +6,8 @@ from enocean.protocol.packet import Packet, RadioPacket
 
 @timing(1000)
 def test_buffer():
-    ''' Test buffer parsing for Communicator '''
+    """Test buffer parsing for Communicator"""
+    # fmt: off
     data = bytearray([
         0x55,
         0x00, 0x0A, 0x07, 0x01,
@@ -16,6 +16,7 @@ def test_buffer():
         0x01, 0xFF, 0xFF, 0xFF, 0xFF, 0x2D, 0x00,
         0x75
     ])
+    # fmt: on
     com = Communicator()
     com._buffer.extend(data[0:5])
     com.parse()
@@ -27,7 +28,7 @@ def test_buffer():
 
 @timing(1000)
 def test_send():
-    ''' Test sending packets to Communicator '''
+    """Test sending packets to Communicator"""
     com = Communicator()
     assert com.send('AJSNDJASNDJANSD') is False
     assert com.transmit.qsize() == 0
@@ -47,6 +48,7 @@ def test_callback():
     def callback(packet):
         assert isinstance(packet, RadioPacket)
 
+    # fmt: off
     data = bytearray([
         0x55,
         0x00, 0x0A, 0x07, 0x01,
@@ -55,6 +57,7 @@ def test_callback():
         0x01, 0xFF, 0xFF, 0xFF, 0xFF, 0x2D, 0x00,
         0x75
     ])
+    # fmt: on
 
     com = Communicator(callback=callback)
     com._buffer.extend(data)
@@ -66,6 +69,7 @@ def test_base_id():
     com = Communicator()
     assert com.base_id is None
 
+    # fmt: off
     other_data = bytearray([
         0x55,
         0x00, 0x0A, 0x07, 0x01,
@@ -74,7 +78,9 @@ def test_base_id():
         0x01, 0xFF, 0xFF, 0xFF, 0xFF, 0x2D, 0x00,
         0x75
     ])
+    # fmt: on
 
+    # fmt: off
     response_data = bytearray([
         0x55,
         0x00, 0x05, 0x00, 0x02,
@@ -82,6 +88,7 @@ def test_base_id():
         0x00, 0xFF, 0x87, 0xCA, 0x00,
         0xA3
     ])
+    # fmt: on
 
     com._buffer.extend(other_data)
     com._buffer.extend(response_data)

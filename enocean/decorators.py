@@ -4,11 +4,12 @@ from os import environ
 
 
 def timing(rounds=1, limit=None):
-    '''
+    """
     Wrapper to implement simple timing of tests.
     Allows running multiple rounds to calculate average time.
     Limit (in milliseconds) can be set to assert, if (average) duration is too high.
-    '''
+    """
+
     def decorator(method):
         @functools.wraps(method)
         def f():
@@ -33,4 +34,5 @@ def timing(rounds=1, limit=None):
         if environ.get('WITH_TIMINGS', None) == '1':
             return f
         return method
+
     return decorator

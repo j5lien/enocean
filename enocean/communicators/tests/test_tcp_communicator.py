@@ -1,7 +1,8 @@
-'''
+"""
 End-to-end tests for TCPCommunicator: the real communicator thread listens on a local port and
 clients push ESP3 frames to it over real sockets, as examples/serial_to_tcp.py does.
-'''
+"""
+
 import socket
 import time
 
@@ -14,7 +15,7 @@ from enocean.protocol.packet import Packet, RadioPacket
 
 
 def connect(port):
-    ''' Connects to the communicator, retrying while its thread is still binding the socket. '''
+    """Connects to the communicator, retrying while its thread is still binding the socket."""
     deadline = time.time() + TIMEOUT
     while True:
         try:
@@ -61,7 +62,7 @@ def test_successive_clients(free_tcp_port, running):
 
 
 def test_send_to_tcp_socket_helper(free_tcp_port, running):
-    ''' The serial -> TCP bridge helper delivers packets to a TCPCommunicator. '''
+    """The serial -> TCP bridge helper delivers packets to a TCPCommunicator."""
     com = running(TCPCommunicator(host='127.0.0.1', port=free_tcp_port))
     connect(free_tcp_port).close()  # wait until listening
     _, _, packet = Packet.parse_msg(bytearray(RADIO_FRAME))

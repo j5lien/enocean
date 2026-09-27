@@ -11,11 +11,9 @@ from enocean.protocol.packet import RadioPacket
 
 
 def assemble_radio_packet(transmitter_id):
-    return RadioPacket.create(rorg=RORG.BS4, rorg_func=0x20, rorg_type=0x01,
-                              sender=transmitter_id,
-                              CV=50,
-                              TMP=21.5,
-                              ES='true')
+    return RadioPacket.create(
+        rorg=RORG.BS4, rorg_func=0x20, rorg_type=0x01, sender=transmitter_id, CV=50, TMP=21.5, ES='true'
+    )
 
 
 init_logging()

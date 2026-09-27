@@ -14,7 +14,7 @@ def init_logging(level=logging.DEBUG, log_to_file=False, logsize=1024, logcount=
     logger.addHandler(stream_handler)
 
     if log_to_file:
-        file_handler = logging.handlers.RotatingFileHandler('enocean.log', 'a', logsize*1000, logcount)
+        file_handler = logging.handlers.RotatingFileHandler('enocean.log', 'a', logsize * 1000, logcount)
         file_handler.setLevel(level)
         file_handler.setFormatter(formatter)
         logger.addHandler(file_handler)

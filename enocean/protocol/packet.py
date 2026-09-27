@@ -8,12 +8,13 @@ from enocean.protocol.eep import EEP
 
 
 class Packet:
-    '''
+    """
     Base class for Packet.
     Mainly used for for packet generation and
     Packet.parse_msg(buf) for parsing message.
     parse_msg() returns subclass, if one is defined for the data type.
-    '''
+    """
+
     eep = EEP()
     logger = logging.getLogger('enocean.protocol.packet')
 
@@ -50,11 +51,16 @@ class Packet:
             self.packet_type,
             [hex(o) for o in self.data],
             [hex(o) for o in self.optional],
-            self.parsed)
+            self.parsed,
+        )
 
     def __eq__(self, other):
-        return self.packet_type == other.packet_type and self.rorg == other.rorg \
-            and self.data == other.data and self.optional == other.optional
+        return (
+            self.packet_type == other.packet_type
+            and self.rorg == other.rorg
+            and self.data == other.data
+            and self.optional == other.optional
+        )
 
     @property
     def _bit_data(self):
@@ -64,13 +70,13 @@ class Packet:
         # Packet.data would then only have the actual, documented data-bytes.
         # Packet.message would contain the whole message.
         # See discussion in issue #14
-        return enocean.utils.to_bitarray(self.data[1:len(self.data) - 5], (len(self.data) - 6) * 8)
+        return enocean.utils.to_bitarray(self.data[1 : len(self.data) - 5], (len(self.data) - 6) * 8)
 
     @_bit_data.setter
     def _bit_data(self, value):
         # The same as getting the data, first and last 5 bits are ommitted, as they are defined...
         for byte in range(len(self.data) - 6):
-            self.data[byte+1] = enocean.utils.from_bitarray(value[byte*8:(byte+1)*8])
+            self.data[byte + 1] = enocean.utils.from_bitarray(value[byte * 8 : (byte + 1) * 8])
 
     # # COMMENTED OUT, AS NOTHING TOUCHES _bit_optional FOR NOW.
     # # Thus, this is also untested.
@@ -96,13 +102,13 @@ class Packet:
 
     @staticmethod
     def parse_msg(buf):
-        '''
+        """
         Parses message from buffer.
         returns:
             - PARSE_RESULT
             - remaining buffer
             - Packet -object (if message was valid, else None)
-        '''
+        """
         # If the buffer doesn't contain 0x55 (start char)
         # the message isn't needed -> ignore
         if 0x55 not in buf:
@@ -110,7 +116,7 @@ class Packet:
 
         # Valid buffer starts from 0x55
         buf = list(buf)
-        buf = buf[buf.index(0x55):]
+        buf = buf[buf.index(0x55) :]
 
         # Sync byte + 4 header bytes + header CRC
         if len(buf) < 6:
@@ -134,8 +140,8 @@ class Packet:
 
         msg = buf[0:msg_len]
         packet_type = msg[4]
-        data = msg[6:6 + data_len]
-        opt_data = msg[6 + data_len:6 + data_len + opt_len]
+        data = msg[6 : 6 + data_len]
+        opt_data = msg[6 + data_len : 6 + data_len + opt_len]
 
         if msg[-1] != crc8.calc(msg[6:-1]):
             Packet.logger.error('Data CRC error!')
@@ -163,11 +169,19 @@ class Packet:
         return PARSE_RESULT.OK, buf, packet
 
     @staticmethod
-    def create(packet_type, rorg, rorg_func, rorg_type, direction=None, command=None,
-               destination=None,
-               sender=None,
-               learn=False, **kwargs):
-        '''
+    def create(
+        packet_type,
+        rorg,
+        rorg_func,
+        rorg_type,
+        direction=None,
+        command=None,
+        destination=None,
+        sender=None,
+        learn=False,
+        **kwargs,
+    ):
+        """
         Creates an packet ready for sending.
         Uses rorg, rorg_func and rorg_type to determine the values set based on EEP.
         Additional arguments (**kwargs) are used for setting the values.
@@ -180,7 +194,7 @@ class Packet:
             - Require sender to be set? Would force the "correct" sender to be set.
             - Do we need to set telegram control bits?
               Might be useful for acting as a repeater?
-        '''
+        """
 
         if packet_type != PACKET.RADIO_ERP1:
             # At least for now, only support PACKET.RADIO_ERP1.
@@ -232,9 +246,9 @@ class Packet:
         packet.set_eep(kwargs)
         if rorg in [RORG.BS1, RORG.BS4] and not learn:
             if rorg == RORG.BS1:
-                packet.data[1] |= (1 << 3)
+                packet.data[1] |= 1 << 3
             if rorg == RORG.BS4:
-                packet.data[4] |= (1 << 3)
+                packet.data[4] |= 1 << 3
         packet.data[-1] = packet.status
 
         # Parse the built packet, so it corresponds to the received packages
@@ -245,7 +259,7 @@ class Packet:
         return packet
 
     def parse(self):
-        ''' Parse data from Packet '''
+        """Parse data from Packet"""
         # Parse status from messages
         if self.rorg in [RORG.RPS, RORG.BS1, RORG.BS4]:
             self.status = self.data[-1]
@@ -258,7 +272,7 @@ class Packet:
         return self.parsed
 
     def select_eep(self, rorg_func, rorg_type, direction=None, command=None):
-        ''' Set EEP based on FUNC and TYPE '''
+        """Set EEP based on FUNC and TYPE"""
         # set EEP profile
         self.rorg_func = rorg_func
         self.rorg_type = rorg_type
@@ -266,7 +280,7 @@ class Packet:
         return self._profile is not None
 
     def parse_eep(self, rorg_func=None, rorg_type=None, direction=None, command=None):
-        ''' Parse EEP based on FUNC and TYPE '''
+        """Parse EEP based on FUNC and TYPE"""
         # set EEP profile, if demanded
         if rorg_func is not None and rorg_type is not None:
             self.select_eep(rorg_func, rorg_type, direction, command)
@@ -276,11 +290,11 @@ class Packet:
         return list(provides)
 
     def set_eep(self, data):
-        ''' Update packet data based on EEP. Input data is a dictionary with keys corresponding to the EEP. '''
+        """Update packet data based on EEP. Input data is a dictionary with keys corresponding to the EEP."""
         self._bit_data, self._bit_status = self.eep.set_values(self._profile, self._bit_data, self._bit_status, data)
 
     def build(self):
-        ''' Build Packet for sending to EnOcean controller '''
+        """Build Packet for sending to EnOcean controller"""
         data_length = len(self.data)
         ords = [0x55, (data_length >> 8) & 0xFF, data_length & 0xFF, len(self.optional), int(self.packet_type)]
         ords.append(crc8.calc(ords[1:5]))
@@ -302,10 +316,12 @@ class RadioPacket(Packet):
         return '%s->%s (%d dBm): %s' % (self.sender_hex, self.destination_hex, self.dBm, packet_str)
 
     @staticmethod
-    def create(rorg, rorg_func, rorg_type, direction=None, command=None,
-               destination=None, sender=None, learn=False, **kwargs):
-        return Packet.create(PACKET.RADIO_ERP1, rorg, rorg_func, rorg_type,
-                             direction, command, destination, sender, learn, **kwargs)
+    def create(
+        rorg, rorg_func, rorg_type, direction=None, command=None, destination=None, sender=None, learn=False, **kwargs
+    ):
+        return Packet.create(
+            PACKET.RADIO_ERP1, rorg, rorg_func, rorg_type, direction, command, destination, sender, learn, **kwargs
+        )
 
     @property
     def sender_int(self):
@@ -343,10 +359,13 @@ class RadioPacket(Packet):
                 self.contains_eep = self._bit_data[DB0.BIT_7]
                 if self.contains_eep:
                     # Get rorg_func and rorg_type from an unidirectional learn packet
-                    self.rorg_func = enocean.utils.from_bitarray(self._bit_data[DB3.BIT_7:DB3.BIT_1])
-                    self.rorg_type = enocean.utils.from_bitarray(self._bit_data[DB3.BIT_1:DB2.BIT_2])
-                    self.rorg_manufacturer = enocean.utils.from_bitarray(self._bit_data[DB2.BIT_2:DB0.BIT_7])
-                    self.logger.debug('learn received, EEP detected, RORG: 0x%02X, FUNC: 0x%02X, TYPE: 0x%02X, Manufacturer: 0x%02X' % (self.rorg, self.rorg_func, self.rorg_type, self.rorg_manufacturer))  # noqa: E501
+                    self.rorg_func = enocean.utils.from_bitarray(self._bit_data[DB3.BIT_7 : DB3.BIT_1])
+                    self.rorg_type = enocean.utils.from_bitarray(self._bit_data[DB3.BIT_1 : DB2.BIT_2])
+                    self.rorg_manufacturer = enocean.utils.from_bitarray(self._bit_data[DB2.BIT_2 : DB0.BIT_7])
+                    self.logger.debug(
+                        'learn received, EEP detected, RORG: 0x%02X, FUNC: 0x%02X, TYPE: 0x%02X, Manufacturer: 0x%02X'
+                        % (self.rorg, self.rorg_func, self.rorg_type, self.rorg_manufacturer)
+                    )  # noqa: E501
 
         return super().parse()
 
@@ -388,8 +407,10 @@ class UTETeachInPacket(RadioPacket):
         super().parse()
         self.unidirectional = not self._bit_data[DB6.BIT_7]
         self.response_expected = not self._bit_data[DB6.BIT_6]
-        self.request_type = enocean.utils.from_bitarray(self._bit_data[DB6.BIT_5:DB6.BIT_3])
-        self.rorg_manufacturer = enocean.utils.from_bitarray(self._bit_data[DB3.BIT_2:DB2.BIT_7] + self._bit_data[DB4.BIT_7:DB3.BIT_7])  # noqa: E501
+        self.request_type = enocean.utils.from_bitarray(self._bit_data[DB6.BIT_5 : DB6.BIT_3])
+        self.rorg_manufacturer = enocean.utils.from_bitarray(
+            self._bit_data[DB3.BIT_2 : DB2.BIT_7] + self._bit_data[DB4.BIT_7 : DB3.BIT_7]
+        )  # noqa: E501
         self.channel = self.data[2]
         self.rorg_type = self.data[5]
         self.rorg_func = self.data[6]
@@ -404,10 +425,13 @@ class UTETeachInPacket(RadioPacket):
         # - Always use bidirectional communication, set response code, set command identifier.
         # - Databytes 5 to 0 are copied from the original message
         # - Set sender id and status
-        data = [self.rorg] + \
-               [enocean.utils.from_bitarray([True, False] + response + [False, False, False, True])] + \
-               self.data[2:8] + \
-               sender_id + [0]
+        data = (
+            [self.rorg]
+            + [enocean.utils.from_bitarray([True, False] + response + [False, False, False, True])]
+            + self.data[2:8]
+            + sender_id
+            + [0]
+        )
 
         # Always use 0x03 to indicate sending, attach sender ID, dBm, and security level
         optional = [0x03] + self.sender + [0xFF, 0x00]

@@ -1,4 +1,3 @@
-
 from enocean.protocol.eep import EEP
 
 eep = EEP()

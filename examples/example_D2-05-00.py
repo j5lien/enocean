@@ -1,10 +1,10 @@
 #!/usr/bin/env python
-'''
+"""
 Example to show automatic UTE Teach-in responses using
 http://www.g-media.fr/prise-gigogne-enocean.html
 
 Waits for UTE Teach-ins, sends the response automatically and prints the ID of new device.
-'''
+"""
 
 import queue
 import sys
@@ -20,9 +20,16 @@ from enocean.protocol.packet import RadioPacket, UTETeachInPacket
 def set_position(destination, percentage):
     global communicator
     communicator.send(
-        RadioPacket.create(rorg=RORG.VLD, rorg_func=0x05, rorg_type=0x00, destination=destination, sender=communicator.base_id, command=1, POS=percentage)
+        RadioPacket.create(
+            rorg=RORG.VLD,
+            rorg_func=0x05,
+            rorg_type=0x00,
+            destination=destination,
+            sender=communicator.base_id,
+            command=1,
+            POS=percentage,
+        )
     )
-
 
 
 communicator = SerialCommunicator()
@@ -35,7 +42,9 @@ print('The Base ID of your module is %s.' % enocean.utils.to_hex_string(communic
 set_position([0x05, 0x0F, 0x0B, 0xEA], 50)
 
 
-print('Press and hold the teach-in button on the plug now, till it starts turning itself off and on (about 10 seconds or so...)')
+print(
+    'Press and hold the teach-in button on the plug now, till it starts turning itself off and on (about 10 seconds or so...)'
+)
 devices_learned = []
 
 # endless loop receiving radio packets
@@ -54,7 +63,9 @@ while communicator.is_alive():
         traceback.print_exc(file=sys.stdout)
         break
 
-print('Devices learned during this session: %s' % (', '.join([enocean.utils.to_hex_string(x) for x in devices_learned])))
+print(
+    'Devices learned during this session: %s' % (', '.join([enocean.utils.to_hex_string(x) for x in devices_learned]))
+)
 
 if communicator.is_alive():
     communicator.stop()
