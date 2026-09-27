@@ -54,6 +54,30 @@ finally:
 Instead of polling `communicator.receive`, you can pass `callback=` to the communicator to be called with each
 packet. UTE teach-in requests are answered automatically unless `teach_in=False`.
 
+Declare your devices and received telegrams come decoded with the right profile:
+
+```python
+from enocean import RORG, DeviceRegistry, SerialCommunicator
+
+devices = DeviceRegistry.from_config(
+    {
+        '00:37:7E:06': {'eep': 'F6-02-02', 'name': 'Office wall switch', 'room': 'office'},
+        '05:99:77:AF': {'eep': 'D2-01-12', 'name': 'Office light'},
+    },
+    defaults={RORG.RPS: 'F6-02-02'},  # profile to try for unknown devices, by RORG
+    ignored=['FF:E8:06:02'],  # dropped
+)
+communicator = SerialCommunicator(port='/dev/ttyUSB0', devices=devices)
+communicator.start()
+
+packet = communicator.receive.get()
+print(packet.device.name if packet.device else 'unknown', packet.eep_id, packet.parsed)
+print(packet.to_dict())  # JSON-serializable, e.g. to index or publish it
+```
+
+Profiles with several commands (e.g. D2-01-12) are decoded with the command the telegram carries. To see what a
+profile contains: `EEP().describe('D2-01-12')`.
+
 Build and send a telegram:
 
 ```python

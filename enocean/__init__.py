@@ -11,6 +11,7 @@ from importlib.metadata import PackageNotFoundError, version
 logging.getLogger(__name__).addHandler(logging.NullHandler())
 
 from enocean.communicators import Communicator, SerialCommunicator, TCPCommunicator  # noqa: E402
+from enocean.devices import Device, DeviceRegistry  # noqa: E402
 from enocean.protocol.constants import EVENT_CODE, PACKET, PARSE_RESULT, RETURN_CODE, RORG  # noqa: E402
 from enocean.protocol.eep import EEP, EEPId, FieldDescription, FieldValue, ProfileDescription  # noqa: E402
 from enocean.protocol.packet import (  # noqa: E402
@@ -37,6 +38,8 @@ __all__ = [
     'RORG',
     'Communicator',
     'CommunicatorStats',
+    'Device',
+    'DeviceRegistry',
     'EventPacket',
     'FieldDescription',
     'FieldValue',

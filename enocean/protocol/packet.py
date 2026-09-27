@@ -4,13 +4,16 @@ import warnings
 from collections import OrderedDict
 from collections.abc import Callable
 from enum import IntEnum
-from typing import Any
+from typing import TYPE_CHECKING, Any
 from xml.etree.ElementTree import Element
 
 import enocean.utils
 from enocean.protocol import crc8
 from enocean.protocol.constants import DB0, DB2, DB3, DB4, DB6, EVENT_CODE, PACKET, PARSE_RESULT, RETURN_CODE, RORG
 from enocean.protocol.eep import EEP, EEPId, FieldValue
+
+if TYPE_CHECKING:
+    from enocean.devices import Device
 
 
 def enum_name(enum: type[IntEnum], value: int) -> str:
@@ -417,6 +420,8 @@ class RadioPacket(Packet):
     """
 
     destination: list[int] = [0xFF, 0xFF, 0xFF, 0xFF]
+    # Set by DeviceRegistry.decode() when the sender is a known device
+    device: 'Device | None' = None
     dbm: int | None = None
     sender: list[int] = [0xFF, 0xFF, 0xFF, 0xFF]
     learn = True
@@ -464,6 +469,7 @@ class RadioPacket(Packet):
             'eep': str(eep_id) if eep_id else None,
             'command': self.command,
             'values': {shortcut: dict(field) for shortcut, field in self.parsed.items()},
+            'device': self.device.to_dict() if self.device else None,
         }
 
     @property

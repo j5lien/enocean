@@ -50,6 +50,8 @@ class StatsSnapshot:
     transport_errors: int
     processing_errors: int
     last_packet_received_at: float | None
+    # Received from devices ignored by the communicator's DeviceRegistry, and not delivered
+    packets_ignored: int = 0
     # Keyed by sender ID ('01:81:B7:44'); empty unless per-sender tracking is enabled
     senders: dict[str, SenderStats] = field(default_factory=dict)
     # Senders forgotten to stay within max_senders
@@ -74,6 +76,7 @@ class CommunicatorStats:
     _transport_errors: int = 0
     _processing_errors: int = 0
     _last_packet_received_at: float | None = None
+    _packets_ignored: int = 0
     _max_senders: int = 0
     _senders: OrderedDict[str, SenderStats] = field(default_factory=OrderedDict)
     _senders_evicted: int = 0
@@ -110,6 +113,10 @@ class CommunicatorStats:
         while len(self._senders) > self._max_senders:
             self._senders.popitem(last=False)
             self._senders_evicted += 1
+
+    def record_ignored(self) -> None:
+        with self._lock:
+            self._packets_ignored += 1
 
     def record_sent(self, packet: Packet, byte_count: int) -> None:
         with self._lock:
@@ -160,6 +167,7 @@ class CommunicatorStats:
                 transport_errors=self._transport_errors,
                 processing_errors=self._processing_errors,
                 last_packet_received_at=self._last_packet_received_at,
+                packets_ignored=self._packets_ignored,
                 senders=dict(self._senders),
                 senders_evicted=self._senders_evicted,
             )

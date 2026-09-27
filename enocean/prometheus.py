@@ -83,6 +83,7 @@ class EnOceanCollector(Collector):
 
     def collect(self) -> Iterator[Metric]:
         received = self._counter('packets_received', 'Packets received', 'packet_type', 'rorg')
+        ignored = self._counter('packets_ignored', 'Packets from ignored devices, not delivered')
         sent = self._counter('packets_sent', 'Packets sent', 'packet_type', 'rorg')
         bytes_received = self._counter('received_bytes', 'Bytes read from the transport')
         bytes_sent = self._counter('sent_bytes', 'Bytes written to the transport')
@@ -118,6 +119,7 @@ class EnOceanCollector(Collector):
                 received.add_metric(values + _packet_labels(kind), count)
             for kind, count in snapshot.packets_sent.items():
                 sent.add_metric(values + _packet_labels(kind), count)
+            ignored.add_metric(values, snapshot.packets_ignored)
             bytes_received.add_metric(values, snapshot.bytes_received)
             bytes_sent.add_metric(values, snapshot.bytes_sent)
             for kind_name, count in snapshot.parse_errors.items():
@@ -147,9 +149,9 @@ class EnOceanCollector(Collector):
                 senders_evicted.add_metric(values, snapshot.senders_evicted)
 
         yield from (
-            received, sent, bytes_received, bytes_sent, parse_errors, teach_ins, base_id_requests, base_id_timeouts,
-            base_id_latency, transport_errors, processing_errors, last_packet, started, up, healthy, base_id_known,
-            queue_size,
+            received, ignored, sent, bytes_received, bytes_sent, parse_errors, teach_ins, base_id_requests,
+            base_id_timeouts, base_id_latency, transport_errors, processing_errors, last_packet, started, up, healthy,
+            base_id_known, queue_size,
         )  # fmt: skip
         if self._per_sender:
             yield from (sender_packets, sender_last_seen, sender_dbm, senders_evicted)
