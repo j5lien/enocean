@@ -27,7 +27,7 @@ class TCPCommunicator(Communicator):
                 (client, addr) = sock.accept()
             except socket.timeout:
                 continue
-            self.logger.debug('Client "%s" connected' % (addr))
+            self.logger.debug('Client "%s" connected', addr)
             client.settimeout(0.5)
             while True and not self._stop_flag.is_set():
                 try:
