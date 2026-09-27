@@ -22,12 +22,25 @@ Remise à niveau du fork `j5lien/enocean`. Cocher au fur et à mesure.
 ## Documentation / métadonnées
 
 
+## Opérabilité
+
+- [ ] Métriques Prometheus faciles à activer, sans imposer de dépendance à ceux qui n'en veulent pas :
+      compteurs internes toujours disponibles (ex. `communicator.stats`), et un adaptateur `prometheus_client`
+      optionnel (extra `enocean[prometheus]`) qui les expose, avec préfixe/labels configurables et
+      l'enregistrement dans un registry fourni par l'appelant
+- [ ] Métriques candidates : paquets reçus/envoyés par type de paquet et RORG, octets lus, erreurs CRC
+      (en-tête/données) et resynchronisations, paquets malformés, taille des queues `receive`/`transmit`,
+      réponses teach-in envoyées, durée et échecs de récupération du base ID, déconnexions du port série,
+      ancienneté du dernier paquet reçu ; par émetteur (dernier vu, dBm) seulement en option, à cause de la
+      cardinalité des labels
+- [ ] Santé : état exploitable pour une sonde (thread vivant, port ouvert, dernier paquet reçu il y a N s)
+- [ ] Logs : niveaux revus (les erreurs CRC sur bruit radio sont aujourd'hui en `ERROR`), option de logs
+      structurés
+
 ## Dépôt GitHub
 
-- [ ] Détacher le fork de `kipe/enocean` pour que les PR visent `j5lien/enocean` par défaut
 - [ ] `gh auth login -h github.com` pour pouvoir créer les PR et suivre la CI depuis le terminal
 - [ ] Activer les alertes Dependabot et CodeQL (Settings → Code security)
-- [ ] Protéger `main` : CI obligatoire avant merge
 - [ ] Publication PyPI : pas pour l'instant (le nom `enocean` appartient au projet d'origine)
 
 ## Fait
@@ -57,3 +70,4 @@ Remise à niveau du fork `j5lien/enocean`. Cocher au fur et à mesure.
       `.git-blame-ignore-revs` pour le commit de formatage
 - [x] Hooks pre-commit (`make hooks`) utilisant les outils de `uv.lock` ; `pyserial>=3.5`
 - [x] Release 1.0.0 : `CHANGELOG.md`, workflow de release sur tag (release GitHub avec wheel/sdist, sans PyPI)
+- [x] Fork détaché de `kipe/enocean`, `main` protégée
