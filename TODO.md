@@ -31,9 +31,8 @@ Dépréciations à retirer (changements incompatibles : version 2.0, avec guide 
 
 ## 2. API d'intégration (d'après l'usage dans enocean-sniffer)
 
-- [ ] Registre d'appareils : identifiant → EEP (et nom, pièce, métadonnées libres), décodage automatique à la
-      réception (`packet.parsed` rempli), profil par défaut par RORG pour les appareils inconnus, liste d'exclusion.
-      Remplace les tables `KNOWN_DEVICES` / `NOT_MY_DEVICES` / `EXCLUDED_DEVICES` et les `select_eep()` du sniffer
+- [x] Registre d'appareils (`DeviceRegistry`) : décodage automatique à la réception, profils par défaut par RORG,
+      appareils ignorés ; accepte le format `KNOWN_DEVICES` du sniffer
 - [x] `packet.to_dict()` sérialisable en JSON (noms d'enum sans exception pour les valeurs inconnues), `EEPId`,
       `packet.eep_id` et `packet.command`
 - [ ] Émission haut niveau vers les actionneurs : D2-01 (sortie d'un canal ou de tous avec `IO=0x1E`), D2-05 (aller à

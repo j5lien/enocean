@@ -1,11 +1,15 @@
 import logging
 import time
 from collections.abc import Callable
+from typing import TYPE_CHECKING
 
 import serial
 
 from enocean.communicators.communicator import Communicator
 from enocean.protocol.packet import Packet
+
+if TYPE_CHECKING:
+    from enocean.devices import DeviceRegistry
 
 
 class SerialCommunicator(Communicator):
@@ -13,13 +17,20 @@ class SerialCommunicator(Communicator):
 
     logger = logging.getLogger('enocean.communicators.SerialCommunicator')
 
-    def __init__(self, port: str, callback: Callable[[Packet], None] | None = None, teach_in: bool = True) -> None:
+    def __init__(
+        self,
+        port: str,
+        callback: Callable[[Packet], None] | None = None,
+        teach_in: bool = True,
+        devices: 'DeviceRegistry | None' = None,
+    ) -> None:
         """
         port: serial port of the module, e.g. /dev/ttyUSB0 or /dev/serial/by-id/usb-EnOcean_GmbH_EnOcean_USB_300_...
         (Linux), /dev/cu.usbserial-... (macOS). callback: called with each received packet instead of queueing it in
-        `receive`. teach_in: answer UTE teach-in requests automatically.
+        `receive`. teach_in: answer UTE teach-in requests automatically. devices: decode received telegrams with
+        the profile of their device, and drop those of ignored devices (see enocean.devices).
         """
-        super().__init__(callback, teach_in)
+        super().__init__(callback, teach_in, devices)
         # Initialize serial port
         self.__ser = serial.Serial(port, 57600, timeout=0.1)
         self._transport_ready = True

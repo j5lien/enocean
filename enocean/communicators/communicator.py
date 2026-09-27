@@ -3,11 +3,14 @@ import queue
 import threading
 import time
 from collections.abc import Callable
-from typing import TypeGuard
+from typing import TYPE_CHECKING, TypeGuard
 
 from enocean.protocol.constants import PACKET, PARSE_RESULT, RETURN_CODE
 from enocean.protocol.packet import Packet, RadioPacket, ResponsePacket, UTETeachInPacket
 from enocean.stats import CommunicatorStats, Health
+
+if TYPE_CHECKING:
+    from enocean.devices import DeviceRegistry
 from enocean.utils import to_hex_string
 
 
@@ -29,7 +32,12 @@ class Communicator(threading.Thread):
 
     logger = logging.getLogger('enocean.communicators.Communicator')
 
-    def __init__(self, callback: Callable[[Packet], None] | None = None, teach_in: bool = True) -> None:
+    def __init__(
+        self,
+        callback: Callable[[Packet], None] | None = None,
+        teach_in: bool = True,
+        devices: 'DeviceRegistry | None' = None,
+    ) -> None:
         super().__init__()
         # Create an event to stop the thread
         self._stop_flag = threading.Event()
@@ -48,6 +56,8 @@ class Communicator(threading.Thread):
         self._base_id_received = threading.Event()
         # UTE teach-in requests waiting for the Base ID before they can be answered
         self._pending_teach_ins: list[UTETeachInPacket] = []
+        # Known devices: received telegrams are decoded with their profile, ignored devices dropped
+        self.devices = devices
         # Runtime statistics, see enocean.stats
         self.stats = CommunicatorStats()
         # Set by transports while their port/socket is usable
@@ -93,6 +103,12 @@ class Communicator(threading.Thread):
             # If message is OK, add it to receive queue or send to the callback method
             if status == PARSE_RESULT.OK and packet:
                 self.stats.record_received(packet)
+
+                if self.devices is not None and isinstance(packet, RadioPacket):
+                    if self.devices.is_ignored(packet.sender):
+                        self.stats.record_ignored()
+                        continue
+                    self.devices.decode(packet)
 
                 if self._base_id_requested and self._is_base_id_response(packet):
                     self._base_id = packet.response_data

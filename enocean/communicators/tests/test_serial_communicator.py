@@ -317,3 +317,17 @@ def test_teach_in_can_be_disabled_at_construction(pty_port, running):
 
     assert isinstance(com.receive.get(timeout=TIMEOUT), UTETeachInPacket)
     module.assert_silent()
+
+
+def test_registry_decodes_received_packets(pty_port, running):
+    from enocean.devices import DeviceRegistry
+
+    module, port = pty_port
+    registry = DeviceRegistry.from_config({'01:81:B7:44': {'eep': 'A5-02-05', 'name': 'Office temperature'}})
+    com = running(SerialCommunicator(port=port, devices=registry))
+
+    module.write(RADIO_FRAME)
+
+    packet = com.receive.get(timeout=TIMEOUT)
+    assert packet.device.name == 'Office temperature'
+    assert packet.parsed['TMP']['value'] == pytest.approx(26.67, abs=0.01)

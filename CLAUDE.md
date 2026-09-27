@@ -63,6 +63,14 @@ decoding of fixed bit patterns against `eep_snapshot.json`: review the snapshot 
 
 There's no build step; it's a pure-Python package (`uv build` produces sdist/wheel).
 
+## Devices
+
+`enocean/devices.py`: `DeviceRegistry` maps device IDs to `Device(id, eep: EEPId, name, metadata)`, with default
+profiles per RORG and ignored IDs; `from_config()` also accepts the legacy `{'rorg', 'func', 'type'}` form.
+Communicators given `devices=` decode each received radio telegram with `registry.decode()` (sets `packet.device`,
+fills `packet.parsed`) and drop ignored devices (counted as `packets_ignored`). `packet.to_dict()` is the
+JSON-friendly view; `EEP().describe()` / `profiles()` are the introspection API.
+
 ## Monitoring
 
 Every communicator keeps `CommunicatorStats` (`enocean/stats.py`) in `communicator.stats`: thread-safe counters
