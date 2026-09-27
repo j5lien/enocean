@@ -208,6 +208,9 @@ class EEP(object):
         for source in profile.contents:
             if not source.name:
                 continue
+            # Skip fields lying beyond the end of a (truncated) telegram
+            if source.name in ('value', 'enum') and self._get_raw(source, bitarray) is None:
+                continue
             if source.name == 'value':
                 output.update(self._get_value(source, bitarray))
             if source.name == 'enum':
