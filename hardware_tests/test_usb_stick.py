@@ -42,15 +42,15 @@ def test_health(communicator: SerialCommunicator) -> None:
 def test_passive_listening(communicator: SerialCommunicator, config: dict[str, str], say) -> None:
     """Whatever the neighbourhood sends, the communicator keeps up without crashing or losing sync."""
     seconds = float(config.get('ENOCEAN_TEST_LISTEN_SECONDS', 15))
+    start = time.time()
     before = communicator.stats.snapshot()
     time.sleep(seconds)
     after = communicator.stats.snapshot()
 
     received = sum(after.packets_received.values()) - sum(before.packets_received.values())
+    devices = sum(1 for sender in after.senders.values() if sender.last_seen_at >= start)
     errors = {kind: after.parse_errors[kind] - before.parse_errors[kind] for kind in after.parse_errors}
-    say(
-        'Heard %d packets from %d devices in %.0f s, parse errors: %s' % (received, len(after.senders), seconds, errors)
-    )
+    say('Heard %d packets from %d devices in %.0f s, parse errors: %s' % (received, devices, seconds, errors))
     assert after.processing_errors == 0
     assert after.transport_errors == 0
     assert communicator.health().healthy
