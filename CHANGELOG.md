@@ -3,6 +3,43 @@
 All notable changes to this project are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and versions follow [Semantic Versioning](https://semver.org/).
 
+## [Unreleased]
+
+Towards 2.0.0: fixes and removal of deprecated APIs, before reworking the public API.
+
+### Breaking changes
+
+- `SerialCommunicator` requires its `port` (the default was `/dev/ttyAMA0`, a Raspberry Pi UART).
+- `packet.received` is a timezone-aware UTC datetime, set by `Packet.parse_msg()` (was a naive local datetime set by
+  the communicator); comparing it with naive datetimes raises `TypeError`.
+- `Packet(...)` raises `TypeError` for data or optional data that isn't a list of ints, `bytes`, `bytearray` or a
+  tuple (it was silently replaced by an empty list).
+- Removed `PACKET.RADIO` and `PACKET.RADIO_ADVANCED`: use `PACKET.RADIO_ERP1` and `PACKET.RADIO_ERP2`
+  (`PACKET(1).name` is now `RADIO_ERP1`).
+- Removed `enocean.decorators` (a test helper).
+- `examples/enocean_example.py` is no longer installed as a script.
+- `enocean.protocol.eep` no longer re-exports `RORG`: import it from `enocean.protocol.constants`.
+
+### Deprecated
+
+- `UTETeachInPacket.channel`: use `number_of_channels`.
+
+### Added
+
+- `SerialCommunicator(teach_in=...)`, like `TCPCommunicator`.
+- `Packet(...)` accepts `bytes` and `bytearray` data.
+
+### Fixed
+
+- Profiles with several commands (e.g. D2-01-12, D2-05-00): decoding without `command=` picks the variant the
+  telegram carries instead of the profile's first one (e.g. a D2-01-12 "set output" command was decoded with the
+  status layout).
+- `create(command=...)` wrote the command into a field named `CMD` only: A5-13-01 and A5-38-08 packets were sent with
+  command 0.
+- A5-04-02 temperature scale: raw range 0...250 per the EEP specification (was 0...255, reading up to 1.6 °C low).
+- `UTETeachInPacket.number_of_channels` was never read from the telegram (always 0xFF).
+- `Packet(type, bytearray(...))` silently lost its data.
+
 ## [1.0.0] - 2026-09-27
 
 First release of the [j5lien/enocean](https://github.com/j5lien/enocean) fork of
@@ -51,5 +88,6 @@ First release of the [j5lien/enocean](https://github.com/j5lien/enocean) fork of
 
 Last release of [kipe/enocean](https://github.com/kipe/enocean).
 
+[Unreleased]: https://github.com/j5lien/enocean/compare/1.0.0...HEAD
 [1.0.0]: https://github.com/j5lien/enocean/compare/0.60.1...1.0.0
 [0.60.1]: https://github.com/j5lien/enocean/releases/tag/0.60.1
