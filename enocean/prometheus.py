@@ -24,8 +24,8 @@ from enocean.communicators.communicator import Communicator
 from enocean.protocol.constants import PACKET, RORG
 from enocean.stats import PacketKind
 
-# Readable label values; the enums' canonical names are legacy aliases for these two
-_PACKET_TYPE_NAMES = {**{int(p): p.name.lower() for p in PACKET}, 0x01: 'radio_erp1', 0x0A: 'radio_erp2'}
+# Readable label values
+_PACKET_TYPE_NAMES = {int(p): p.name.lower() for p in PACKET}
 _RORG_NAMES = {int(r): r.name.lower() for r in RORG}
 
 
