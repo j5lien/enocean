@@ -1,7 +1,9 @@
+import pytest
+
 from enocean.decorators import timing
 from enocean.protocol.constants import RORG
 from enocean.protocol.eep import EEP
-from enocean.protocol.packet import Packet
+from enocean.protocol.packet import Packet, RadioPacket
 
 
 @timing(1000)
@@ -289,3 +291,11 @@ def test_fails():
     # fmt: on
     assert eep.find_profile(packet._bit_data, 0xD2, 0x01, 0x01) is not None
     assert eep.find_profile(packet._bit_data, 0xD2, 0x01, 0x01, command=-1) is None
+
+
+def test_a5_04_02_temperature_scale():
+    """EEP 2.6.7: TMP valid range 0...250 maps to -20...+60 °C (was decoded with 0...255)."""
+    for raw, expected in ((0, -20.0), (138, 24.16), (250, 60.0)):
+        packet = RadioPacket(1, [RORG.BS4, 0x00, 0x64, raw, 0x0A, 0x01, 0x02, 0x03, 0x04, 0x00], [])
+        packet.parse_eep(0x04, 0x02)
+        assert packet.parsed['TMP']['value'] == pytest.approx(expected)
