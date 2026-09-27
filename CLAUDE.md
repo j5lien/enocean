@@ -52,11 +52,18 @@ to keep their sync/header/CRC/data/optional layout; do the same for new ones.
 The package is fully typed (`py.typed`, `mypy --strict`; tests are not type-checked). `ElementTree.Element`
 lookups return `Optional`: use the `_attr`/`_child` helpers in `eep.py`. Decoded fields are `FieldValue` TypedDicts.
 
-After changing `EEP.xml`:
+`enocean/protocol/EEP.xml` is **generated, never edited by hand**: `make eep` downloads the official EnOcean Alliance
+specification (EEP 2.6.8 XML, not versioned, SHA-256 checked, cached in `.cache/`), converts it with
+`tools/generate_eep.py`, and merges `tools/eep_additions.xml` (profiles missing from or unusable in the spec, each with
+its reason). CI regenerates it and fails if it differs. To fix or add a profile, change the generator or the additions,
+then:
 ```bash
-make profiles      # regenerate SUPPORTED_PROFILES.md (CI fails if it is stale)
+make eep           # regenerate EEP.xml and SUPPORTED_PROFILES.md
 UPDATE_EEP_SNAPSHOT=1 uv run pytest enocean/protocol/tests/test_eep_profiles.py   # if decoding changed on purpose
 ```
+The generator's warnings list what the spec expresses but the format can't (split MSB/LSB or signed values, decoded
+raw; masked enum values; variants with identical conditions). Shortcuts are the official ones made into identifiers
+(`I/O` -> `IO`).
 `test_eep_profiles.py` validates every profile in `EEP.xml` (fields fit and don't overlap, enum values fit their
 bits, VLD `<data>` declares `bits`), round-trips every enum/value through `RadioPacket.create()`, and compares the
 decoding of fixed bit patterns against `eep_snapshot.json`: review the snapshot diff when regenerating it.
@@ -128,14 +135,16 @@ release with the wheel/sdist and that CHANGELOG section as notes.
 `EEP` loads and indexes `EEP.xml` on construction into `self.telegrams[rorg][func][type]` (an
 `ElementTree.Element`; the root is `EEP.xml_root`). Elements without children are falsy, so compare
 lookups with `is None`, never `if not element`. `find_profile()` looks up a profile by RORG/FUNC/TYPE (and optional
-`direction`/`command`, since some profiles have direction-specific or multi-command data layouts).
+`direction`/`command`), otherwise picks the `<data>` variant whose `<condition source="data|status" offset size
+value>` elements the telegram matches (most specific first), falling back to the first variant. `create()` writes the
+selected variant's conditions (except fields given explicitly) so a built telegram decodes as that variant.
 `get_values()`/`set_values()` walk a profile's `<value>`, `<enum>`, and `<status>` child tags to
 decode/encode bit-packed fields — `<value>` does linear range→scale interpolation, `<enum>` maps raw
-integers to descriptions (including `<rangeitem>` ranges), `<status>` are single-bit booleans read
-from `Packet.status`, not `Packet.data`.
+integers to descriptions (including `<rangeitem>` ranges, which may carry `scale-min`/`scale-max`/`unit` and then
+decode to a number), `<status>` are single-bit booleans read from `Packet.status`, not `Packet.data`.
 
-When adding/editing EEP support, changes normally happen in `EEP.xml`, not in Python code — the
-Python side is a generic bit-field interpreter driven entirely by the XML schema.
+The Python side is a generic bit-field interpreter driven entirely by the XML; profile changes go through the
+generator or `tools/eep_additions.xml`.
 
 ### Communicator layer (`enocean/communicators/`)
 `Communicator` (base class, in `communicator.py`) is a `threading.Thread` that owns a `transmit` and

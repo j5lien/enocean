@@ -359,7 +359,7 @@ def test_vld():
     assert packet.parsed['IO']['raw_value'] == 0x1E
     assert packet.parsed['IO']['value'] == 'All output channels supported by the device'
     assert packet.parsed['DV']['value'] == 'Switch to new output value'
-    assert packet.parsed['OV']['value'] == 'Output value 100% or ON'
+    assert packet.parsed['OV']['value'] == 'Output value 1% to 100% or ON: 100'
 
 
 def test_fails():

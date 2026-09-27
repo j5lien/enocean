@@ -6,8 +6,9 @@ A Python library for reading and controlling [EnOcean](https://www.enocean.com/)
 actuators…) through an EnOcean USB/serial module (e.g. USB 300) or a TCP bridge.
 
 It implements the EnOcean Serial Protocol 3 (ESP3) and decodes/encodes telegrams according to the EnOcean Equipment
-Profiles (EEP) defined in [`enocean/protocol/EEP.xml`](enocean/protocol/EEP.xml). See
-[SUPPORTED_PROFILES.md](SUPPORTED_PROFILES.md) for the full list.
+Profiles (EEP): the 270 profiles of the official EnOcean Alliance specification (EEP 2.6.8), from which
+[`enocean/protocol/EEP.xml`](enocean/protocol/EEP.xml) is generated. See [SUPPORTED_PROFILES.md](SUPPORTED_PROFILES.md)
+for the full list, or `EEP().describe('D2-01-12')` from code.
 
 This is a maintained fork of [kipe/enocean](https://github.com/kipe/enocean), which is no longer maintained.
 
@@ -183,10 +184,11 @@ make test-hardware  # against a real EnOcean stick configured in .env (see .env.
 make cov          # tests with coverage
 make lint         # ruff check + format check
 make format       # ruff format
-make profiles     # regenerate SUPPORTED_PROFILES.md after editing EEP.xml
+make eep          # regenerate EEP.xml from the official specification (downloaded) and tools/eep_additions.xml
 ```
 
-Most profile work happens in `EEP.xml`: the Python side is a generic bit-field interpreter driven by it.
+`EEP.xml` is generated: profile changes go through `tools/generate_eep.py` or `tools/eep_additions.xml`, then
+`make eep`. The Python side is a generic bit-field interpreter driven by it.
 `enocean/protocol/tests/test_eep_profiles.py` validates every profile; after an intended decoding change, regenerate
 its snapshot with `UPDATE_EEP_SNAPSHOT=1 uv run pytest enocean/protocol/tests/test_eep_profiles.py` and review the
 diff.

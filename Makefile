@@ -1,4 +1,4 @@
-.PHONY: install hooks test test-hardware test-linux cov lint format profiles clean
+.PHONY: install hooks test test-hardware test-linux cov lint format eep profiles clean
 
 install:  ## Create .venv and install package + dev deps
 	uv sync
@@ -28,6 +28,10 @@ lint:
 
 format:
 	uv run ruff format
+
+eep:  ## Regenerate enocean/protocol/EEP.xml from the official EEP specification (downloaded) and tools/eep_additions.xml
+	uv run python tools/generate_eep.py
+	uv run python generate_supported_profiles.py
 
 profiles:  ## Regenerate SUPPORTED_PROFILES.md from EEP.xml
 	uv run python generate_supported_profiles.py
