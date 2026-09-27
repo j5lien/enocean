@@ -1,3 +1,5 @@
+"""CRC8 checksums of ESP3 packets (polynomial 0x07)."""
+
 # https://gist.github.com/hypebeast/3833758
 from collections.abc import Iterable
 
@@ -36,6 +38,7 @@ CRC_TABLE = (
 
 
 def calc(msg: Iterable[int]) -> int:
+    """CRC8 of bytes, as ESP3 computes it over a packet's header and over its data."""
     checksum = 0
     for byte in msg:
         checksum = CRC_TABLE[checksum & 0xFF ^ byte & 0xFF]

@@ -1,5 +1,4 @@
-"""
-Commands for actuators, sent through a communicator whose module is taught in to them.
+"""Commands for actuators, sent through a communicator whose module is taught in to them.
 
     light = SwitchActuator(communicator, '05:99:77:AF')     # D2-01 switch/dimmer
     light.turn_on(channel=1)
@@ -38,9 +37,14 @@ class Actuator:
         eep: EEPId | str,
         sender: list[int] | None = None,
     ) -> None:
-        """
-        id: the actuator's ID. eep: its profile. sender: the ID to send from, one of the module's range (base ID to
-        base ID + 127) the actuator was taught in with; defaults to the base ID.
+        """Bind an actuator to the communicator that reaches it.
+
+        Args:
+            communicator: The communicator (started) whose module is taught in to the actuator.
+            id: The actuator's ID, '05:99:77:AF' or bytes.
+            eep: Its profile.
+            sender: The ID to send from: one of the module's range (base ID to base ID + 127) the actuator was taught
+                in with. Defaults to the module's base ID.
         """
         self.communicator = communicator
         self.id = device_id(id)
@@ -49,12 +53,24 @@ class Actuator:
 
     @property
     def destination(self) -> list[int]:
+        """The actuator's ID as bytes."""
         destination = from_hex_string(self.id)
         assert isinstance(destination, list)
         return destination
 
     def send_command(self, command: int, **fields: Any) -> RadioPacket:
-        """Builds and sends a command of the actuator's profile, e.g. send_command(1, IO=0, OV=100)."""
+        """Build and send a command of the actuator's profile.
+
+        Args:
+            command: The command number (e.g. 1 for D2-01 Actuator Set Output).
+            **fields: The command's field values, e.g. IO=0, OV=100 (see EEP().describe()).
+
+        Returns:
+            The packet sent.
+
+        Raises:
+            RuntimeError: The module's base ID is unknown and no sender was given.
+        """
         sender = self.sender or self.communicator.base_id
         if sender is None:
             raise RuntimeError('The base ID of the module is unknown: give a sender or check the module responds')
@@ -84,15 +100,28 @@ class SwitchActuator(Actuator):
         super().__init__(communicator, id, eep, sender)
 
     def set_output(self, value: int, channel: int = ALL_CHANNELS) -> RadioPacket:
-        """Command 1, Actuator Set Output: value 0 (off) to 100 (on / 100 %), on one channel or all of them."""
+        """Command 1, Actuator Set Output.
+
+        Args:
+            value: 0 (off) to 100 (on, or 100 % for dimmers).
+            channel: The output channel (0-based), or ALL_CHANNELS.
+
+        Returns:
+            The packet sent.
+
+        Raises:
+            ValueError: value is out of 0..100.
+        """
         if not 0 <= value <= 100:
             raise ValueError('Output value must be between 0 and 100, got %r' % value)
         return self.send_command(1, DV=0, IO=channel, OV=value)
 
     def turn_on(self, channel: int = ALL_CHANNELS) -> RadioPacket:
+        """Switch a channel (or all) on: set_output(100)."""
         return self.set_output(100, channel)
 
     def turn_off(self, channel: int = ALL_CHANNELS) -> RadioPacket:
+        """Switch a channel (or all) off: set_output(0)."""
         return self.set_output(0, channel)
 
     def query_status(self, channel: int = ALL_CHANNELS) -> RadioPacket:
@@ -113,7 +142,19 @@ class BlindActuator(Actuator):
         super().__init__(communicator, id, eep, sender)
 
     def go_to(self, position: int | None = None, angle: int | None = None, channel: int = 0) -> RadioPacket:
-        """Command 1, Go to Position and Angle; None leaves the position or angle unchanged."""
+        """Command 1, Go to Position and Angle.
+
+        Args:
+            position: Vertical position in % (0: fully open/up), None to leave it unchanged.
+            angle: Slat rotation angle in %, None to leave it unchanged.
+            channel: The channel.
+
+        Returns:
+            The packet sent.
+
+        Raises:
+            ValueError: position or angle is out of 0..100.
+        """
         for name, value in (('position', position), ('angle', angle)):
             if value is not None and not 0 <= value <= 100:
                 raise ValueError('%s must be between 0 and 100, got %r' % (name.capitalize(), value))

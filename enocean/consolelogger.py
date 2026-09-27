@@ -1,3 +1,5 @@
+"""Logging setup for applications and examples using the library."""
+
 import datetime
 import json
 import logging
@@ -11,6 +13,7 @@ class JsonFormatter(logging.Formatter):
     """Formats records as one JSON object per line, including fields passed with `extra=`."""
 
     def format(self, record: logging.LogRecord) -> str:
+        """Format a record as a JSON object: time, level, logger, message, extra fields, exception."""
         entry: dict[str, object] = {
             'time': datetime.datetime.fromtimestamp(record.created, datetime.timezone.utc).isoformat(),
             'level': record.levelname,
@@ -30,9 +33,14 @@ def init_logging(
     logcount: int = 5,
     json_format: bool = False,
 ) -> None:
-    """
-    Sends the library's logs to stderr (and optionally to a rotating enocean.log file).
-    With json_format=True, each record is a JSON object carrying structured fields such as packet_type, rorg, sender.
+    """Send the library's logs to stderr, and optionally to a rotating enocean.log file.
+
+    Args:
+        level: Minimum level of the records emitted.
+        log_to_file: Also write to enocean.log in the working directory.
+        logsize: Maximum size of enocean.log, in kB, before it is rotated.
+        logcount: Number of rotated files kept.
+        json_format: Emit one JSON object per record, carrying structured fields such as packet_type, rorg, sender.
     """
     formatter: logging.Formatter
     if json_format:

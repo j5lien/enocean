@@ -1,8 +1,12 @@
+"""Constants of the EnOcean Serial Protocol 3 (ESP3) and of the telegram types (RORG)."""
+
 from enum import IntEnum
 
 
 # EnOceanSerialProtocol3.pdf / 12
 class PACKET(IntEnum):
+    """ESP3 packet types: radio telegrams, responses to commands, events, commands to the module."""
+
     RESERVED = 0x00
     RADIO_ERP1 = 0x01
     RESPONSE = 0x02
@@ -19,6 +23,8 @@ class PACKET(IntEnum):
 
 # EnOceanSerialProtocol3.pdf / 18
 class RETURN_CODE(IntEnum):
+    """Return code of a RESPONSE packet, the module's answer to a command."""
+
     OK = 0x00
     ERROR = 0x01
     NOT_SUPPORTED = 0x02
@@ -28,6 +34,8 @@ class RETURN_CODE(IntEnum):
 
 # EnOceanSerialProtocol3.pdf / 20
 class EVENT_CODE(IntEnum):
+    """Code of an EVENT packet, sent by the module on its own (e.g. Smart Acknowledge events)."""
+
     SA_RECLAIM_NOT_SUCCESFUL = 0x01
     SA_CONFIRM_LEARN = 0x02
     SA_LEARN_ACK = 0x03
@@ -37,6 +45,8 @@ class EVENT_CODE(IntEnum):
 
 # EnOcean_Equipment_Profiles_EEP_V2.61_public.pdf / 8
 class RORG(IntEnum):
+    """Radio telegram types, the first byte of a radio telegram (the RORG of an EEP, e.g. D2 in D2-01-12)."""
+
     UNDEFINED = 0x00
     RPS = 0xF6
     BS1 = 0xD5
@@ -53,16 +63,21 @@ class RORG(IntEnum):
     UTE = 0xD4
 
 
-# Results for message parsing
 class PARSE_RESULT(IntEnum):
+    """Outcome of Packet.parse_msg(): a packet, not enough bytes yet, or corrupted bytes that were skipped."""
+
     OK = 0x00
     INCOMPLETE = 0x01
     CRC_MISMATCH = 0x03
 
 
-# Data byte indexing
-# Starts from the end, so works on messages of all length.
 class DB0:
+    """Bit positions of data byte 0 in a telegram's bit array, counted from the end.
+
+    The data bytes are numbered from the last one (DB0) so the positions work whatever the telegram length;
+    BIT_7 is the most significant bit. DB1 to DB6 follow the same scheme.
+    """
+
     BIT_0 = -1
     BIT_1 = -2
     BIT_2 = -3
@@ -74,6 +89,8 @@ class DB0:
 
 
 class DB1:
+    """Bit positions of data byte 1, counted from the end of the bit array (see DB0)."""
+
     BIT_0 = -9
     BIT_1 = -10
     BIT_2 = -11
@@ -85,6 +102,8 @@ class DB1:
 
 
 class DB2:
+    """Bit positions of data byte 2, counted from the end of the bit array (see DB0)."""
+
     BIT_0 = -17
     BIT_1 = -18
     BIT_2 = -19
@@ -96,6 +115,8 @@ class DB2:
 
 
 class DB3:
+    """Bit positions of data byte 3, counted from the end of the bit array (see DB0)."""
+
     BIT_0 = -25
     BIT_1 = -26
     BIT_2 = -27
@@ -107,6 +128,8 @@ class DB3:
 
 
 class DB4:
+    """Bit positions of data byte 4, counted from the end of the bit array (see DB0)."""
+
     BIT_0 = -33
     BIT_1 = -34
     BIT_2 = -35
@@ -118,6 +141,8 @@ class DB4:
 
 
 class DB5:
+    """Bit positions of data byte 5, counted from the end of the bit array (see DB0)."""
+
     BIT_0 = -41
     BIT_1 = -42
     BIT_2 = -43
@@ -129,6 +154,8 @@ class DB5:
 
 
 class DB6:
+    """Bit positions of data byte 6, counted from the end of the bit array (see DB0)."""
+
     BIT_0 = -49
     BIT_1 = -50
     BIT_2 = -51
