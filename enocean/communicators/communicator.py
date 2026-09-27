@@ -17,7 +17,7 @@ def packet_log_fields(packet: Packet) -> dict[str, object]:
     if isinstance(packet, RadioPacket):
         fields['rorg'] = int(packet.rorg)
         fields['sender'] = packet.sender_hex
-        fields['dbm'] = packet.dBm
+        fields['dbm'] = packet.dbm
     return fields
 
 

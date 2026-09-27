@@ -31,8 +31,7 @@ Receive telegrams from a serial module and decode them:
 ```python
 import queue
 
-from enocean.communicators import SerialCommunicator
-from enocean.protocol.constants import RORG
+from enocean import RORG, SerialCommunicator
 
 communicator = SerialCommunicator(port='/dev/ttyUSB0')
 communicator.start()
@@ -58,8 +57,7 @@ packet. UTE teach-in requests are answered automatically unless `teach_in=False`
 Build and send a telegram:
 
 ```python
-from enocean.protocol.constants import RORG
-from enocean.protocol.packet import RadioPacket
+from enocean import RORG, RadioPacket
 
 # D2-01-12, command 1: switch output channel 0 on
 packet = RadioPacket.create(

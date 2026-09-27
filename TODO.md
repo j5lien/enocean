@@ -40,8 +40,8 @@ Dépréciations à retirer (changements incompatibles : version 2.0, avec guide 
 - [ ] Émission haut niveau vers les actionneurs : D2-01 (sortie d'un canal ou de tous avec `IO=0x1E`), D2-05 (aller à
       une position, stop, demander la position), avec le base ID (ou base ID + décalage) comme émetteur
 - [ ] Teach-in : appairer la clé à un actionneur (requête et réponse UTE), au lieu de forger les octets à la main
-- [ ] API publique déclarée : exports dans `enocean/__init__.py` (`from enocean import SerialCommunicator,
-      RadioPacket, RORG`), `__all__`, nommage cohérent (`dBm` / `dbm`)
+- [x] API publique déclarée : `from enocean import SerialCommunicator, RadioPacket, RORG`, `__all__`,
+      `__version__` ; `RadioPacket.dbm` (`None` si non rapporté) remplace `dBm`, déprécié
 - [ ] Introspection des profils : lister les champs d'un profil et leurs valeurs possibles depuis le code (aujourd'hui
       uniquement dans `SUPPORTED_PROFILES.md`)
 - [ ] Refaire enocean-sniffer avec la nouvelle version : valide l'API sur un vrai projet (registre, `to_dict()`,

@@ -70,7 +70,7 @@ def test_wall_switch_toggles_light(radio: Radio, config: dict[str, str], say) ->
         assert press.rorg == RORG.RPS
         press.parse_eep(0x02, 0x02)
         assert press.parsed['EB']['value'] == 'pressed'
-        say('Switch: %s pressed (%d dBm)' % (press.parsed['R1']['value'], press.dBm))
+        say('Switch: %s pressed (%d dBm)' % (press.parsed['R1']['value'], press.dbm))
 
         def is_light_status(p: Packet) -> bool:
             # D2-01-12 command 4 (actuator status response) for the configured channel
@@ -84,7 +84,7 @@ def test_wall_switch_toggles_light(radio: Radio, config: dict[str, str], say) ->
 
         status = radio.wait_for(is_light_status, timeout=5)
         status.parse_eep(0x01, 0x12)  # the command (4, status response) is detected from the telegram
-        say('Light %s channel %d: %s (%d dBm)' % (light, channel, status.parsed['OV']['value'], status.dBm))
+        say('Light %s channel %d: %s (%d dBm)' % (light, channel, status.parsed['OV']['value'], status.dbm))
         outputs.append(status.parsed['OV']['raw_value'])
 
     # One side switches on, the other off

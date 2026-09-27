@@ -43,7 +43,7 @@ def test_ptm210_wall_switch(payload, status, expected):
     packet, values = decode(radio_frame(RORG.RPS, payload, OFFICE_SWITCH, status, -58), 0x02, 0x02)
 
     assert packet.sender_hex == '00:37:7E:06'
-    assert packet.dBm == -58
+    assert packet.dbm == -58
     assert values.items() >= expected.items()
 
 
