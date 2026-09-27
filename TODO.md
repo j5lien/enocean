@@ -31,19 +31,18 @@ Dépréciations à retirer (changements incompatibles : version 2.0, avec guide 
 
 ## 2. API d'intégration (d'après l'usage dans enocean-sniffer)
 
-- [ ] Registre d'appareils : identifiant → EEP (et nom, pièce, métadonnées libres), décodage automatique à la
-      réception (`packet.parsed` rempli), profil par défaut par RORG pour les appareils inconnus, liste d'exclusion.
-      Remplace les tables `KNOWN_DEVICES` / `NOT_MY_DEVICES` / `EXCLUDED_DEVICES` et les `select_eep()` du sniffer
-- [ ] `packet.to_dict()` sérialisable en JSON : identifiants en hexadécimal, noms de RORG et de type de paquet (sans
-      lever d'exception pour une valeur inconnue : `RORG(x)` plante aujourd'hui), champs décodés, dBm, horodatage ISO.
-      Le sniffer construit ce dictionnaire à la main et lit l'attribut privé `_bit_status`
-- [ ] Émission haut niveau vers les actionneurs : D2-01 (sortie d'un canal ou de tous avec `IO=0x1E`), D2-05 (aller à
-      une position, stop, demander la position), avec le base ID (ou base ID + décalage) comme émetteur
-- [ ] Teach-in : appairer la clé à un actionneur (requête et réponse UTE), au lieu de forger les octets à la main
-- [ ] API publique déclarée : exports dans `enocean/__init__.py` (`from enocean import SerialCommunicator,
-      RadioPacket, RORG`), `__all__`, nommage cohérent (`dBm` / `dbm`)
-- [ ] Introspection des profils : lister les champs d'un profil et leurs valeurs possibles depuis le code (aujourd'hui
-      uniquement dans `SUPPORTED_PROFILES.md`)
+- [x] Registre d'appareils (`DeviceRegistry`) : décodage automatique à la réception, profils par défaut par RORG,
+      appareils ignorés ; accepte le format `KNOWN_DEVICES` du sniffer
+- [x] `packet.to_dict()` sérialisable en JSON (noms d'enum sans exception pour les valeurs inconnues), `EEPId`,
+      `packet.eep_id` et `packet.command`
+- [x] Émission haut niveau : `SwitchActuator` (D2-01) et `BlindActuator` (D2-05), depuis le base ID ou un autre ID de
+      la clé
+- [x] Teach-in : `communicator.learn()` (fenêtre d'apprentissage), réponses correctes aux demandes de suppression et aux
+      profils inconnus, registre mis à jour
+- [ ] Test matériel du teach-in avec un vrai actionneur (appairage réel de la clé : à faire avec un actionneur de test)
+- [x] API publique déclarée : `from enocean import SerialCommunicator, RadioPacket, RORG`, `__all__`,
+      `__version__` ; `RadioPacket.dbm` (`None` si non rapporté) remplace `dBm`, déprécié
+- [x] Introspection des profils : `EEP().profiles()`, `EEP().describe('D2-01-12')`
 - [ ] Refaire enocean-sniffer avec la nouvelle version : valide l'API sur un vrai projet (registre, `to_dict()`,
       métriques Prometheus et logs JSON)
 

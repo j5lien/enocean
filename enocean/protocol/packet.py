@@ -3,13 +3,26 @@ import logging
 import warnings
 from collections import OrderedDict
 from collections.abc import Callable
-from typing import Any
+from enum import IntEnum
+from typing import TYPE_CHECKING, Any
 from xml.etree.ElementTree import Element
 
 import enocean.utils
 from enocean.protocol import crc8
-from enocean.protocol.constants import DB0, DB2, DB3, DB4, DB6, PACKET, PARSE_RESULT, RORG
-from enocean.protocol.eep import EEP, FieldValue
+from enocean.protocol.constants import DB0, DB2, DB3, DB4, DB6, EVENT_CODE, PACKET, PARSE_RESULT, RETURN_CODE, RORG
+from enocean.protocol.eep import EEP, EEPId, FieldValue
+
+if TYPE_CHECKING:
+    from enocean.devices import Device
+
+
+def enum_name(enum: type[IntEnum], value: int) -> str:
+    """Name of value in enum, or its hex value ('0x62') if unknown, instead of raising like enum(value)."""
+    try:
+        return enum(value).name
+    except ValueError:
+        return '0x%02X' % value
+
 
 # Kinds of errors reported to Packet.parse_msg(on_error=...)
 HEADER_CRC_ERROR = 'header_crc'
@@ -357,6 +370,32 @@ class Packet:
         """Update packet data based on EEP. Input data is a dictionary with keys corresponding to the EEP."""
         self._bit_data, self._bit_status = self.eep.set_values(self._profile, self._bit_data, self._bit_status, data)
 
+    @property
+    def eep_id(self) -> EEPId | None:
+        """The profile selected with select_eep()/parse_eep() (or announced by a teach-in telegram), if any."""
+        if self.rorg_func is None or self.rorg_type is None or self.rorg == RORG.UNDEFINED:
+            return None
+        return EEPId(self.rorg, self.rorg_func, self.rorg_type)
+
+    @property
+    def command(self) -> int | None:
+        """Command of the selected profile variant, for profiles with several commands (e.g. D2-01-12)."""
+        if self._profile is None or self._profile.get('command') is None:
+            return None
+        return int(self._profile.get('command', 0))
+
+    def to_dict(self) -> dict[str, Any]:
+        """
+        JSON-serializable view of the packet: hex strings for bytes and IDs, enum names (hex for unknown values),
+        ISO 8601 reception time and, once decoded, the EEP and field values.
+        """
+        return {
+            'packet_type': enum_name(PACKET, self.packet_type),
+            'received': self.received.isoformat() if self.received else None,
+            'data': enocean.utils.to_hex_string(self.data),
+            'optional': enocean.utils.to_hex_string(self.optional),
+        }
+
     def build(self) -> list[int]:
         """Build Packet for sending to EnOcean controller"""
         data_length = len(self.data)
@@ -373,7 +412,7 @@ class RadioPacket(Packet):
     A radio telegram (ERP1).
 
     Attributes set when parsing: `sender` / `destination` (4-byte IDs, also as `sender_hex` / `destination_hex`),
-    `dBm` (signal strength, 0 if the module didn't report it) and `learn`.
+    `dbm` (signal strength of the received telegram, None if the module didn't report it) and `learn`.
 
     `learn` tells whether the telegram can be used to teach the device in. 1BS and 4BS telegrams carry a learn bit,
     UTE telegrams a teach-in request; RPS and VLD telegrams have no learn bit, so `learn` is always True for them:
@@ -381,14 +420,22 @@ class RadioPacket(Packet):
     """
 
     destination: list[int] = [0xFF, 0xFF, 0xFF, 0xFF]
-    dBm = 0
+    # Set by DeviceRegistry.decode() when the sender is a known device
+    device: 'Device | None' = None
+    dbm: int | None = None
     sender: list[int] = [0xFF, 0xFF, 0xFF, 0xFF]
     learn = True
     contains_eep = False
 
     def __str__(self) -> str:
         packet_str = super().__str__()
-        return '%s->%s (%d dBm): %s' % (self.sender_hex, self.destination_hex, self.dBm, packet_str)
+        return '%s->%s (%s dBm): %s' % (self.sender_hex, self.destination_hex, self.dbm, packet_str)
+
+    @property
+    def dBm(self) -> int:  # noqa: N802
+        """Deprecated: use dbm (None instead of 0 when the module didn't report the signal strength)."""
+        warnings.warn('RadioPacket.dBm is deprecated, use dbm', DeprecationWarning, stacklevel=2)
+        return self.dbm or 0
 
     @staticmethod
     def create(  # type: ignore[override]
@@ -407,6 +454,23 @@ class RadioPacket(Packet):
         )
         assert isinstance(packet, RadioPacket)
         return packet
+
+    def to_dict(self) -> dict[str, Any]:
+        eep_id = self.eep_id
+        return {
+            **super().to_dict(),
+            'rorg': enum_name(RORG, self.rorg),
+            'sender': self.sender_hex,
+            'destination': self.destination_hex,
+            'dbm': self.dbm,
+            'status': self.status,
+            'repeater_count': self.repeater_count,
+            'learn': self.learn,
+            'eep': str(eep_id) if eep_id else None,
+            'command': self.command,
+            'values': {shortcut: dict(field) for shortcut, field in self.parsed.items()},
+            'device': self.device.to_dict() if self.device else None,
+        }
 
     @property
     def sender_int(self) -> int:
@@ -428,7 +492,7 @@ class RadioPacket(Packet):
         # Optional data (sub-telegram count, destination, dBm, security level) may be omitted
         if len(self.optional) >= 6:
             self.destination = self.optional[1:5]
-            self.dBm = -self.optional[5]
+            self.dbm = -self.optional[5]
         self.sender = self.data[-5:-1]
         # RPS and VLD have no learn bit: any of their telegrams may be used for teach-in
         self.learn = True
@@ -477,6 +541,25 @@ class UTETeachInPacket(RadioPacket):
     request_type = NOT_SPECIFIC
 
     contains_eep = True
+
+    @property
+    def eep_id(self) -> EEPId | None:
+        """The profile the device announces in its teach-in request."""
+        if self.rorg_func is None or self.rorg_type is None:
+            return None
+        return EEPId(self.rorg_of_eep, self.rorg_func, self.rorg_type)
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            **super().to_dict(),
+            'teach_in': {
+                'request': {self.TEACH_IN: 'teach_in', self.DELETE: 'delete'}.get(self.request_type, 'not_specific'),
+                'bidirectional': self.bidirectional,
+                'response_expected': self.response_expected,
+                'number_of_channels': self.number_of_channels,
+                'manufacturer': self.rorg_manufacturer,
+            },
+        }
 
     @property
     def channel(self) -> int:
@@ -544,6 +627,13 @@ class ResponsePacket(Packet):
         self.response_data = self.data[1:]
         return super().parse()
 
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            **super().to_dict(),
+            'return_code': enum_name(RETURN_CODE, self.response),
+            'response_data': enocean.utils.to_hex_string(self.response_data),
+        }
+
 
 class EventPacket(Packet):
     event = 0
@@ -553,3 +643,10 @@ class EventPacket(Packet):
         self.event = self.data[0]
         self.event_data = self.data[1:]
         return super().parse()
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            **super().to_dict(),
+            'event_code': enum_name(EVENT_CODE, self.event),
+            'event_data': enocean.utils.to_hex_string(self.event_data),
+        }

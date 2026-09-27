@@ -239,3 +239,11 @@ def test_parsed_packets_are_timestamped_in_utc():
     assert before <= packet.received <= datetime.datetime.now(datetime.timezone.utc)
     assert Packet(PACKET.COMMON_COMMAND, [0x08]).received is None
     assert RadioPacket.create(rorg=RORG.RPS, rorg_func=0x02, rorg_type=0x02, EB='pressed').received is None
+
+
+def test_dbm_and_deprecated_dBm():  # noqa: N802
+    packet = RadioPacket(PACKET.RADIO_ERP1, [RORG.RPS, 0x10, 1, 2, 3, 4, 0x30], [0x01, 0xFF, 0xFF, 0xFF, 0xFF, 0x3A, 0])
+    assert packet.dbm == -58
+    with pytest.warns(DeprecationWarning):
+        assert packet.dBm == -58
+    assert RadioPacket(PACKET.RADIO_ERP1, [RORG.RPS, 0x10, 1, 2, 3, 4, 0x30], []).dbm is None

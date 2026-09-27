@@ -5,6 +5,7 @@ import time
 from collections.abc import Callable
 from typing import TypeGuard
 
+from enocean.devices import Device, DeviceRegistry
 from enocean.protocol.constants import PACKET, PARSE_RESULT, RETURN_CODE
 from enocean.protocol.packet import Packet, RadioPacket, ResponsePacket, UTETeachInPacket
 from enocean.stats import CommunicatorStats, Health
@@ -17,7 +18,7 @@ def packet_log_fields(packet: Packet) -> dict[str, object]:
     if isinstance(packet, RadioPacket):
         fields['rorg'] = int(packet.rorg)
         fields['sender'] = packet.sender_hex
-        fields['dbm'] = packet.dBm
+        fields['dbm'] = packet.dbm
     return fields
 
 
@@ -29,7 +30,12 @@ class Communicator(threading.Thread):
 
     logger = logging.getLogger('enocean.communicators.Communicator')
 
-    def __init__(self, callback: Callable[[Packet], None] | None = None, teach_in: bool = True) -> None:
+    def __init__(
+        self,
+        callback: Callable[[Packet], None] | None = None,
+        teach_in: bool = True,
+        devices: DeviceRegistry | None = None,
+    ) -> None:
         super().__init__()
         # Create an event to stop the thread
         self._stop_flag = threading.Event()
@@ -48,6 +54,11 @@ class Communicator(threading.Thread):
         self._base_id_received = threading.Event()
         # UTE teach-in requests waiting for the Base ID before they can be answered
         self._pending_teach_ins: list[UTETeachInPacket] = []
+        # Teach-in window opened by learn(): answer teach-ins until then (time.monotonic()), collecting the devices
+        self._learning_until = 0.0
+        self._learned: list[Device] = []
+        # Known devices: received telegrams are decoded with their profile, ignored devices dropped
+        self.devices = devices
         # Runtime statistics, see enocean.stats
         self.stats = CommunicatorStats()
         # Set by transports while their port/socket is usable
@@ -94,6 +105,12 @@ class Communicator(threading.Thread):
             if status == PARSE_RESULT.OK and packet:
                 self.stats.record_received(packet)
 
+                if self.devices is not None and isinstance(packet, RadioPacket):
+                    if self.devices.is_ignored(packet.sender):
+                        self.stats.record_ignored()
+                        continue
+                    self.devices.decode(packet)
+
                 if self._base_id_requested and self._is_base_id_response(packet):
                     self._base_id = packet.response_data
                     self.logger.info('Base ID of the module: %s', to_hex_string(self._base_id))
@@ -102,7 +119,7 @@ class Communicator(threading.Thread):
                     self._base_id_received.set()
                     self._answer_pending_teach_ins()
 
-                if isinstance(packet, UTETeachInPacket) and self.teach_in:
+                if isinstance(packet, UTETeachInPacket) and (self.teach_in or self.learning):
                     self._pending_teach_ins.append(packet)
                     if self.base_id is not None:
                         self._answer_pending_teach_ins()
@@ -129,16 +146,62 @@ class Communicator(threading.Thread):
             packet = self._pending_teach_ins.pop(0)
             if packet.sender == self._base_id:
                 continue
+            response, outcome = self._teach_in_outcome(packet)
             self.logger.info(
-                'Answering UTE teach-in from %s (EEP %02X-%02X-%02X).',
+                'UTE teach-in request from %s (EEP %s): %s.',
                 packet.sender_hex,
-                packet.rorg_of_eep,
-                packet.rorg_func,
-                packet.rorg_type,
+                packet.eep_id,
+                outcome,
                 extra=packet_log_fields(packet),
             )
-            self.send(packet.create_response_packet(self._base_id))
+            self.send(packet.create_response_packet(self._base_id, response))
             self.stats.record_teach_in_response()
+
+    def _teach_in_outcome(self, packet: UTETeachInPacket) -> tuple[list[bool], str]:
+        """
+        The response to a UTE teach-in request, updating the device registry: deletion for deletion requests (and for
+        non-specific ones from devices already known), refusal for profiles unknown to EEP.xml, acceptance otherwise.
+        """
+        known = self.devices is not None and packet.sender_hex in self.devices
+        if packet.request_type == UTETeachInPacket.DELETE or (
+            packet.request_type == UTETeachInPacket.NOT_SPECIFIC and known
+        ):
+            if self.devices is not None:
+                self.devices.remove(packet.sender)
+            return UTETeachInPacket.DELETE_ACCEPTED, 'deleted'
+        eep_id = packet.eep_id
+        known_profiles = packet.eep.telegrams
+        if eep_id is None or eep_id.type not in known_profiles.get(eep_id.rorg, {}).get(eep_id.func, {}):
+            return UTETeachInPacket.EEP_NOT_SUPPORTED, 'profile not supported'
+        device = Device(packet.sender_hex, eep_id)
+        if self.devices is not None and not known:
+            self.devices.add(device)
+        if self.learning:
+            self._learned.append(device)
+        return UTETeachInPacket.TEACHIN_ACCEPTED, 'accepted'
+
+    @property
+    def learning(self) -> bool:
+        """Whether a teach-in window opened by learn() is ongoing."""
+        return time.monotonic() < self._learning_until
+
+    def learn(self, timeout: float = 30, max_devices: int | None = None) -> list[Device]:
+        """
+        Opens a teach-in window: for `timeout` seconds (or until `max_devices` devices are taught in), UTE teach-in
+        requests are answered even with teach_in=False. Put the devices in learn mode meanwhile (e.g. press their
+        learn button). Taught-in devices are added to `devices` (a DeviceRegistry is created if there is none) and
+        returned. Blocks: call it from another thread than the communicator's.
+        """
+        if self.devices is None:
+            self.devices = DeviceRegistry()
+        self._learned = []
+        self._learning_until = time.monotonic() + timeout
+        try:
+            while self.learning and (max_devices is None or len(self._learned) < max_devices):
+                time.sleep(0.05)
+        finally:
+            self._learning_until = 0.0
+        return list(self._learned)
 
     def _request_base_id(self) -> None:
         if not self._base_id_requested:

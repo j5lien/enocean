@@ -1,9 +1,13 @@
 import logging
 import socket
 from collections.abc import Callable
+from typing import TYPE_CHECKING
 
 from enocean.communicators.communicator import Communicator
 from enocean.protocol.packet import Packet
+
+if TYPE_CHECKING:
+    from enocean.devices import DeviceRegistry
 
 
 class TCPCommunicator(Communicator):
@@ -16,9 +20,14 @@ class TCPCommunicator(Communicator):
     logger = logging.getLogger('enocean.communicators.TCPCommunicator')
 
     def __init__(
-        self, host: str = '', port: int = 9637, callback: Callable[[Packet], None] | None = None, teach_in: bool = True
+        self,
+        host: str = '',
+        port: int = 9637,
+        callback: Callable[[Packet], None] | None = None,
+        teach_in: bool = True,
+        devices: 'DeviceRegistry | None' = None,
     ) -> None:
-        super().__init__(callback, teach_in)
+        super().__init__(callback, teach_in, devices)
         self.host = host
         self.port = port
 
