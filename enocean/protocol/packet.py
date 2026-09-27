@@ -27,7 +27,12 @@ class Packet:
     eep = EEP()
     logger = logging.getLogger('enocean.protocol.packet')
 
-    def __init__(self, packet_type: int, data: list[int] | None = None, optional: list[int] | None = None) -> None:
+    def __init__(
+        self,
+        packet_type: int,
+        data: list[int] | bytes | bytearray | None = None,
+        optional: list[int] | bytes | bytearray | None = None,
+    ) -> None:
         self.packet_type = packet_type
         self.rorg: int = RORG.UNDEFINED
         self.rorg_func: int | None = None
@@ -35,20 +40,8 @@ class Packet:
         self.rorg_manufacturer: int | None = None
 
         self.received: datetime.datetime | None = None
-        self.data: list[int]
-        self.optional: list[int]
-
-        if not isinstance(data, list) or data is None:
-            self.logger.debug('Replacing Packet.data with default value.')
-            self.data = []
-        else:
-            self.data = data
-
-        if not isinstance(optional, list) or optional is None:
-            self.logger.debug('Replacing Packet.optional with default value.')
-            self.optional = []
-        else:
-            self.optional = optional
+        self.data = self._int_list(data, 'data')
+        self.optional = self._int_list(optional, 'optional')
 
         self.status = 0
         self.parsed: OrderedDict[str, FieldValue] = OrderedDict()
@@ -56,6 +49,16 @@ class Packet:
         self._profile: Element | None = None
 
         self.parse()
+
+    @staticmethod
+    def _int_list(value: list[int] | bytes | bytearray | tuple[int, ...] | None, name: str) -> list[int]:
+        if value is None:
+            return []
+        if isinstance(value, list):
+            return value
+        if isinstance(value, (bytes, bytearray, tuple)):
+            return list(value)
+        raise TypeError('Packet %s must be a list of ints, bytes or bytearray, not %s' % (name, type(value).__name__))
 
     def __str__(self) -> str:
         return '0x%02X %s %s %s' % (

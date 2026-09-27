@@ -7,8 +7,8 @@ d'abord assainir, ensuite retravailler l'API publique, puis la documenter.
 
 Bugs :
 
-- [ ] `Packet(type, bytearray(...))` perd silencieusement ses données (`data` remplacé par `[]`) : accepter
-      `bytes`/`bytearray`
+- [x] `Packet(type, bytearray(...))` perdait silencieusement ses données : `bytes`/`bytearray`/tuples acceptés, les
+      autres types lèvent `TypeError`
 - [ ] Décodage VLD multi-commandes sans `command=` : c'est la première variante du profil qui s'applique, pas celle de
       la trame (ex. D2-01-12 : une commande 1 d'un contrôleur est décodée avec la structure de la commande 4). Détecter
       la commande depuis le champ `<command>` du profil
