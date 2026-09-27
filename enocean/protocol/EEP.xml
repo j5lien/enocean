@@ -1397,7 +1397,7 @@
           </value>
         </data>
         <data command="6" bits="15">
-          <value description="Latitude(MSB)" Shortcut="LAT(MSB)" offset="0" size="4" unit="">
+          <value description="Latitude(MSB)" shortcut="LAT(MSB)" offset="0" size="4" unit="">
             <range>
               <min>0</min>
               <max>15</max>

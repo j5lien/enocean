@@ -2,9 +2,8 @@
 from __future__ import print_function, unicode_literals, division, absolute_import
 import os
 import logging
-from sys import version_info
 from collections import OrderedDict
-from bs4 import BeautifulSoup
+from xml.etree import ElementTree
 
 import enocean.utils
 # Left as a helper
@@ -20,38 +19,41 @@ class EEP(object):
 
         eep_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'EEP.xml')
         try:
-            if version_info[0] > 2:
-                with open(eep_path, 'r', encoding='UTF-8') as xml_file:
-                    self.soup = BeautifulSoup(xml_file.read(), "html.parser")
-            else:
-                with open(eep_path, 'r') as xml_file:
-                    self.soup = BeautifulSoup(xml_file.read(), "html.parser")
+            self.xml_root = ElementTree.parse(eep_path).getroot()
             self.init_ok = True
             self.__load_xml()
-        except IOError:
+        except (IOError, ElementTree.ParseError):
             # Impossible to test with the current structure?
             # To be honest, as the XML is included with the library,
             # there should be no possibility of ever reaching this...
-            self.logger.warn('Cannot load protocol file!')
+            self.logger.warning('Cannot load protocol file!')
             self.init_ok = False
 
     def __load_xml(self):
         self.telegrams = {
-            enocean.utils.from_hex_string(telegram['rorg']): {
-                enocean.utils.from_hex_string(function['func']): {
-                    enocean.utils.from_hex_string(type['type'], ): type
-                    for type in function.find_all('profile')
+            enocean.utils.from_hex_string(telegram.get('rorg')): {
+                enocean.utils.from_hex_string(function.get('func')): {
+                    enocean.utils.from_hex_string(type.get('type')): type
+                    for type in function.iter('profile')
                 }
-                for function in telegram.find_all('profiles')
+                for function in telegram.iter('profiles')
             }
-            for telegram in self.soup.find_all('telegram')
+            for telegram in self.xml_root.iter('telegram')
         }
+
+    @staticmethod
+    def _find_child(source, tag, **attributes):
+        ''' First child element with the given tag and attribute values (compared as strings), or None. '''
+        for child in source.findall(tag):
+            if all(child.get(name) == str(value) for name, value in attributes.items()):
+                return child
+        return None
 
     @staticmethod
     def _get_raw(source, bitarray):
         ''' Get raw data as integer, based on offset and size '''
-        offset = int(source['offset'])
-        size = int(source['size'])
+        offset = int(source.get('offset'))
+        size = int(source.get('size'))
         length = len(bitarray)
 
         if offset >= length:
@@ -63,15 +65,15 @@ class EEP(object):
     @staticmethod
     def _set_raw(target, raw_value, bitarray):
         ''' put value into bit array '''
-        offset = int(target['offset'])
-        size = int(target['size'])
+        offset = int(target.get('offset'))
+        size = int(target.get('size'))
         for digit in range(size):
             bitarray[offset+digit] = (raw_value >> (size-digit-1)) & 0x01 != 0
         return bitarray
 
     @staticmethod
     def _get_rangeitem(source, raw_value):
-        for rangeitem in source.find_all('rangeitem'):
+        for rangeitem in source.findall('rangeitem'):
             if raw_value in range(int(rangeitem.get('start', -1)), int(rangeitem.get('end', -1)) + 1):
                 return rangeitem
 
@@ -88,9 +90,9 @@ class EEP(object):
         scl_max = float(scl.find('max').text)
 
         return {
-            source['shortcut']: {
+            source.get('shortcut'): {
                 'description': source.get('description'),
-                'unit': source['unit'],
+                'unit': source.attrib['unit'],
                 'value': (scl_max - scl_min) / (rng_max - rng_min) * (raw_value - rng_min) + scl_min,
                 'raw_value': raw_value,
             }
@@ -101,14 +103,16 @@ class EEP(object):
         raw_value = self._get_raw(source, bitarray)
 
         # Find value description.
-        value_desc = source.find('item', {'value': str(raw_value)}) or self._get_rangeitem(source, raw_value)
+        value_desc = self._find_child(source, 'item', value=raw_value)
+        if value_desc is None:
+            value_desc = self._get_rangeitem(source, raw_value)
 
         return {
-            source['shortcut']: {
+            source.get('shortcut'): {
                 'description': source.get('description'),
                 'unit': source.get('unit', ''),
-                'value': (value_desc['description'].format(value=raw_value)
-                          if value_desc and value_desc['description'] else ''),
+                'value': (value_desc.get('description').format(value=raw_value)
+                          if value_desc is not None and value_desc.get('description') else ''),
                 'raw_value': raw_value,
             }
         }
@@ -117,7 +121,7 @@ class EEP(object):
         ''' Get boolean value, based on the data in XML '''
         raw_value = self._get_raw(source, bitarray)
         return {
-            source['shortcut']: {
+            source.get('shortcut'): {
                 'description': source.get('description'),
                 'unit': source.get('unit', ''),
                 'value': True if raw_value else False,
@@ -143,40 +147,41 @@ class EEP(object):
         # derive raw value
         if isinstance(value, int):
             # check whether this value exists
-            if target.find('item', {'value': value}) or self._get_rangeitem(target, value):
+            if self._find_child(target, 'item', value=value) is not None \
+                    or self._get_rangeitem(target, value) is not None:
                 # set integer values directly
                 raw_value = value
             else:
                 raise ValueError('Enum value "%s" not found in EEP.' % (value))
         else:
-            value_item = target.find('item', {'description': value})
+            value_item = self._find_child(target, 'item', description=value)
             if value_item is None:
                 raise ValueError('Enum description for value "%s" not found in EEP.' % (value))
-            raw_value = int(value_item['value'])
+            raw_value = int(value_item.get('value'))
         return self._set_raw(target, raw_value, bitarray)
 
     @staticmethod
     def _set_boolean(target, data, bitarray):
         ''' set given value to target bit in bitarray '''
-        bitarray[int(target['offset'])] = data
+        bitarray[int(target.get('offset'))] = data
         return bitarray
 
     def find_profile(self, bitarray, eep_rorg, rorg_func, rorg_type, direction=None, command=None):
         ''' Find profile and data description, matching RORG, FUNC and TYPE '''
         if not self.init_ok:
-            self.logger.warn('EEP.xml not loaded!')
+            self.logger.warning('EEP.xml not loaded!')
             return None
 
         if eep_rorg not in self.telegrams.keys():
-            self.logger.warn('Cannot find rorg %s in EEP!', hex(eep_rorg))
+            self.logger.warning('Cannot find rorg %s in EEP!', hex(eep_rorg))
             return None
 
         if rorg_func not in self.telegrams[eep_rorg].keys():
-            self.logger.warn('Cannot find rorg %s func %s in EEP!', hex(eep_rorg), hex(rorg_func))
+            self.logger.warning('Cannot find rorg %s func %s in EEP!', hex(eep_rorg), hex(rorg_func))
             return None
 
         if rorg_type not in self.telegrams[eep_rorg][rorg_func].keys():
-            self.logger.warn('Cannot find rorg %s func %s type %s in EEP!',
+            self.logger.warning('Cannot find rorg %s func %s type %s in EEP!',
                              hex(eep_rorg), hex(rorg_func), hex(rorg_type))
             return None
 
@@ -184,20 +189,20 @@ class EEP(object):
 
         if command:
             # multiple commands can be defined, with the command id always in same location (per RORG-FUNC-TYPE).
-            eep_command = profile.find('command', recursive=False)
+            eep_command = profile.find('command')
             # If commands are not set in EEP, or command is None,
             # get the first data as a "best guess".
-            if not eep_command:
-                return profile.find('data', recursive=False)
+            if eep_command is None:
+                return profile.find('data')
 
             # If eep_command is defined, so should be data.command
-            return profile.find('data', {'command': str(command)}, recursive=False)
+            return self._find_child(profile, 'data', command=command)
 
         # extract data description
         # the direction tag is optional
         if direction is None:
-            return profile.find('data', recursive=False)
-        return profile.find('data', {'direction': direction}, recursive=False)
+            return profile.find('data')
+        return self._find_child(profile, 'data', direction=direction)
 
     def get_values(self, profile, bitarray, status):
         ''' Get keys and values from bitarray '''
@@ -205,17 +210,15 @@ class EEP(object):
             return [], {}
 
         output = OrderedDict({})
-        for source in profile.contents:
-            if not source.name:
-                continue
+        for source in profile:
             # Skip fields lying beyond the end of a (truncated) telegram
-            if source.name in ('value', 'enum') and self._get_raw(source, bitarray) is None:
+            if source.tag in ('value', 'enum') and self._get_raw(source, bitarray) is None:
                 continue
-            if source.name == 'value':
+            if source.tag == 'value':
                 output.update(self._get_value(source, bitarray))
-            if source.name == 'enum':
+            if source.tag == 'enum':
                 output.update(self._get_enum(source, bitarray))
-            if source.name == 'status':
+            if source.tag == 'status':
                 output.update(self._get_boolean(source, status))
         return output.keys(), output
 
@@ -226,17 +229,17 @@ class EEP(object):
 
         for shortcut, value in properties.items():
             # find the given property from EEP
-            target = profile.find(shortcut=shortcut)
-            if not target:
+            target = next((tag for tag in profile.iter() if tag.get('shortcut') == shortcut), None)
+            if target is None:
                 # TODO: Should we raise an error?
                 self.logger.warning('Cannot find data description for shortcut %s', shortcut)
                 continue
 
             # update bit_data
-            if target.name == 'value':
+            if target.tag == 'value':
                 data = self._set_value(target, value, data)
-            if target.name == 'enum':
+            if target.tag == 'enum':
                 data = self._set_enum(target, value, data)
-            if target.name == 'status':
+            if target.tag == 'status':
                 status = self._set_boolean(target, value, status)
         return data, status
