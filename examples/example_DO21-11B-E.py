@@ -1,30 +1,35 @@
 #!/usr/bin/env python
-# -*- encoding: utf-8 -*-
-'''
+"""
 Example to show automatic UTE Teach-in responses using
 http://www.g-media.fr/prise-gigogne-enocean.html
 
 Waits for UTE Teach-ins, sends the response automatically and prints the ID of new device.
-'''
+"""
 
+import queue
 import sys
 import time
 import traceback
+
 import enocean.utils
 from enocean.communicators import SerialCommunicator
-from enocean.protocol.packet import RadioPacket, UTETeachInPacket
 from enocean.protocol.constants import RORG
-
-try:
-    import queue
-except ImportError:
-    import Queue as queue
+from enocean.protocol.packet import RadioPacket, UTETeachInPacket
 
 
 def send_command(destination, output_value):
     global communicator
     communicator.send(
-        RadioPacket.create(rorg=RORG.VLD, rorg_func=0x01, rorg_type=0x01, destination=destination, sender=communicator.base_id, command=1, IO=0x1E, OV=output_value)
+        RadioPacket.create(
+            rorg=RORG.VLD,
+            rorg_func=0x01,
+            rorg_type=0x01,
+            destination=destination,
+            sender=communicator.base_id,
+            command=1,
+            IO=0x1E,
+            OV=output_value,
+        )
     )
 
 
@@ -52,7 +57,10 @@ time.sleep(0.1)
 turn_off([0x01, 0x94, 0xE3, 0xB9])
 
 
-print('Press and hold the teach-in button on the plug now, till it starts turning itself off and on (about 10 seconds or so...)')
+print(
+    'Press and hold the teach-in button on the plug now, till it starts turning itself off and on '
+    '(about 10 seconds or so...)'
+)
 devices_learned = []
 
 # endless loop receiving radio packets
@@ -71,7 +79,9 @@ while communicator.is_alive():
         traceback.print_exc(file=sys.stdout)
         break
 
-print('Devices learned during this session: %s' % (', '.join([enocean.utils.to_hex_string(x) for x in devices_learned])))
+print(
+    'Devices learned during this session: %s' % (', '.join([enocean.utils.to_hex_string(x) for x in devices_learned]))
+)
 
 if communicator.is_alive():
     communicator.stop()

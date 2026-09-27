@@ -1,5 +1,4 @@
-# -*- encoding: utf-8 -*-
-'''
+"""
 Data-driven tests over every profile defined in EEP.xml.
 
 - Structural checks: every field fits in the telegram, fields don't overlap, enum values fit in their bits,
@@ -9,7 +8,8 @@ Data-driven tests over every profile defined in EEP.xml.
   when changing how EEP.xml is loaded or interpreted. After an intended change to decoding or to EEP.xml,
   regenerate it with `UPDATE_EEP_SNAPSHOT=1 uv run pytest enocean/protocol/tests/test_eep_profiles.py`
   and review the diff.
-'''
+"""
+
 import json
 import logging
 import os
@@ -28,8 +28,8 @@ CREATABLE_RORGS = (RORG.RPS, RORG.BS1, RORG.BS4, RORG.VLD)
 FIXED_WIDTH_BITS = {RORG.RPS: 8, RORG.BS1: 8, RORG.BS4: 32}
 
 
-class Variant(object):
-    ''' One <data> block of a profile: what a given telegram (per direction/command) looks like. '''
+class Variant:
+    """One <data> block of a profile: what a given telegram (per direction/command) looks like."""
 
     def __init__(self, rorg, func, type_, profile, data):
         self.rorg, self.func, self.type = rorg, func, type_
@@ -100,15 +100,21 @@ def enum_values(tag):
 
 def range_and_scale(tag):
     rng, scl = tag.find('range'), tag.find('scale')
-    return (float(rng.find('min').text), float(rng.find('max').text),
-            float(scl.find('min').text), float(scl.find('max').text))
+    return (
+        float(rng.find('min').text),
+        float(rng.find('max').text),
+        float(scl.find('min').text),
+        float(scl.find('max').text),
+    )
 
 
 # --- Structural checks ---------------------------------------------------------------------------------------------
 
+
 def test_every_profile_is_covered():
     assert len({(v.rorg, v.func, v.type) for v in VARIANTS}) == sum(
-        len(types) for funcs in EEP().telegrams.values() for types in funcs.values())
+        len(types) for funcs in EEP().telegrams.values() for types in funcs.values()
+    )
 
 
 @by_id(VARIANTS)
@@ -117,7 +123,11 @@ def test_fields_fit_in_telegram(variant):
         assert variant.width, 'VLD <data> must declare its length in bytes ("bits" attribute)'
     for tag in variant.data_fields:
         assert max(bits(tag)) < variant.width, '%s (bits %d..%d) exceeds %d bits' % (
-            tag.get('shortcut'), min(bits(tag)), max(bits(tag)), variant.width)
+            tag.get('shortcut'),
+            min(bits(tag)),
+            max(bits(tag)),
+            variant.width,
+        )
     for tag in variant.fields:
         if tag.tag == 'status':
             assert 0 <= int(tag.get('offset')) < 8 and int(tag.get('size')) == 1, tag.get('shortcut')
@@ -152,8 +162,9 @@ def test_value_fields_have_usable_range(variant):
         if tag.tag == 'value':
             rng_min, rng_max, scl_min, scl_max = range_and_scale(tag)
             assert rng_min != rng_max and scl_min != scl_max, tag.get('shortcut')
-            assert 0 <= min(rng_min, rng_max) and max(rng_min, rng_max) < 2 ** int(tag.get('size')), \
+            assert min(rng_min, rng_max) >= 0 and max(rng_min, rng_max) < 2 ** int(tag.get('size')), (
                 '%s: range %g..%g does not fit in %s bits' % (tag.get('shortcut'), rng_min, rng_max, tag.get('size'))
+            )
 
 
 @by_id(VARIANTS)
@@ -163,10 +174,18 @@ def test_truncated_telegram_decodes_fields_present(variant):
 
 # --- Round trip ----------------------------------------------------------------------------------------------------
 
+
 def create(variant, learn=False, **values):
-    return RadioPacket.create(rorg=variant.rorg, rorg_func=variant.func, rorg_type=variant.type,
-                              direction=variant.direction, command=variant.command,
-                              sender=[0x01, 0x02, 0x03, 0x04], learn=learn, **values)
+    return RadioPacket.create(
+        rorg=variant.rorg,
+        rorg_func=variant.func,
+        rorg_type=variant.type,
+        direction=variant.direction,
+        command=variant.command,
+        sender=[0x01, 0x02, 0x03, 0x04],
+        learn=learn,
+        **values,
+    )
 
 
 @by_id(CREATABLE)
@@ -214,6 +233,7 @@ def test_status_fields_round_trip(variant):
 
 
 # --- Snapshot ------------------------------------------------------------------------------------------------------
+
 
 def patterns(variant):
     size = (variant.width or 8) // 8

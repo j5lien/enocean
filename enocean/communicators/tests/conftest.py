@@ -1,11 +1,12 @@
-# -*- encoding: utf-8 -*-
-'''
+"""
 Fixtures for end-to-end communicator tests.
 
 A pseudo-terminal stands in for the EnOcean USB/serial module: the communicator opens the pty's
 slave side as its serial port, while tests act as the radio module on the master side, writing raw
 ESP3 frames in and reading what the communicator writes out.
-'''
+"""
+
+import contextlib
 import os
 import select
 import socket
@@ -18,6 +19,7 @@ from enocean.protocol.constants import PARSE_RESULT
 from enocean.protocol.packet import Packet
 
 # A5-02-05 temperature telegram from sender 01:81:B7:44
+# fmt: off
 RADIO_FRAME = bytes([
     0x55,
     0x00, 0x0A, 0x07, 0x01,
@@ -26,8 +28,10 @@ RADIO_FRAME = bytes([
     0x01, 0xFF, 0xFF, 0xFF, 0xFF, 0x2D, 0x00,
     0x75,
 ])
+# fmt: on
 
 # UTE teach-in request (D2-01-01) from sender 01:94:E3:B9, expecting a response
+# fmt: off
 UTE_TEACH_IN_FRAME = bytes([
     0x55,
     0x00, 0x0D, 0x07, 0x01,
@@ -36,8 +40,10 @@ UTE_TEACH_IN_FRAME = bytes([
     0x01, 0xFF, 0xFF, 0xFF, 0xFF, 0x40, 0x00,
     0xAB,
 ])
+# fmt: on
 
 # RESPONSE RET_OK to CO_RD_IDBASE, base ID FF:87:CA:00
+# fmt: off
 BASE_ID_RESPONSE_FRAME = bytes([
     0x55,
     0x00, 0x05, 0x00, 0x02,
@@ -45,13 +51,14 @@ BASE_ID_RESPONSE_FRAME = bytes([
     0x00, 0xFF, 0x87, 0xCA, 0x00,
     0xA3,
 ])
+# fmt: on
 
 # How long to wait for anything asynchronous before failing
 TIMEOUT = 3
 
 
-class FakeSerialModule(object):
-    ''' The "radio module" end of the pty: writes frames to the communicator, reads frames it sends. '''
+class FakeSerialModule:
+    """The "radio module" end of the pty: writes frames to the communicator, reads frames it sends."""
 
     def __init__(self, fd):
         self.fd = fd
@@ -61,7 +68,7 @@ class FakeSerialModule(object):
         os.write(self.fd, bytes(data))
 
     def read_packet(self, timeout=TIMEOUT):
-        ''' Returns the next complete, CRC-valid packet written by the communicator. '''
+        """Returns the next complete, CRC-valid packet written by the communicator."""
         deadline = time.time() + timeout
         while True:
             status, self._buffer, packet = Packet.parse_msg(self._buffer)
@@ -81,10 +88,11 @@ class FakeSerialModule(object):
 
 @pytest.fixture
 def pty_port():
-    ''' Yields (FakeSerialModule, slave device path). '''
+    """Yields (FakeSerialModule, slave device path)."""
     if sys.platform == 'win32':
         pytest.skip('pseudo-terminals are not available on Windows')
     import tty
+
     master, slave = os.openpty()
     # Raw mode, so the line discipline doesn't translate or echo bytes
     tty.setraw(master)
@@ -93,10 +101,8 @@ def pty_port():
         yield FakeSerialModule(master), os.ttyname(slave)
     finally:
         os.close(slave)
-        try:
+        with contextlib.suppress(OSError):
             os.close(master)
-        except OSError:
-            pass
 
 
 @pytest.fixture
@@ -110,7 +116,7 @@ def free_tcp_port():
 
 @pytest.fixture
 def running():
-    ''' Starts communicators and guarantees they are stopped and joined after the test. '''
+    """Starts communicators and guarantees they are stopped and joined after the test."""
     started = []
 
     def start(communicator):

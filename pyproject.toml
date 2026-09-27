@@ -22,7 +22,6 @@ license = { file = "LICENSE" }
 authors = [{ name = "Kimmo Huoman", email = "kipenroskaposti@gmail.com" }]
 requires-python = ">=3.10"
 dependencies = [
-    "enum-compat>=0.0.2",
     "pyserial>=3.0",
 ]
 
@@ -65,8 +64,17 @@ show_missing = true
 line-length = 120
 target-version = "py310"
 
+[tool.ruff.format]
+quote-style = "single"
+
 [tool.ruff.lint]
-select = ["E", "W", "F", "C90"]
+select = ["E", "W", "F", "C90", "I", "UP", "B", "SIM"]
+# printf-style formatting is kept (also what logging uses)
+ignore = ["UP031"]
+
+[tool.ruff.lint.isort]
+known-first-party = ["enocean"]
+known-local-folder = ["conftest"]
 
 [tool.ruff.lint.mccabe]
 max-complexity = 15
