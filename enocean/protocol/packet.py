@@ -1,5 +1,6 @@
 import datetime
 import logging
+import warnings
 from collections import OrderedDict
 from collections.abc import Callable
 from typing import Any
@@ -474,9 +475,16 @@ class UTETeachInPacket(RadioPacket):
     number_of_channels = 0xFF
     rorg_of_eep: int = RORG.UNDEFINED
     request_type = NOT_SPECIFIC
-    channel: int | None = None
 
     contains_eep = True
+
+    @property
+    def channel(self) -> int:
+        """Deprecated alias of number_of_channels."""
+        warnings.warn(
+            'UTETeachInPacket.channel is deprecated, use number_of_channels', DeprecationWarning, stacklevel=2
+        )
+        return self.number_of_channels
 
     @property
     def bidirectional(self) -> bool:
@@ -498,8 +506,8 @@ class UTETeachInPacket(RadioPacket):
         self.rorg_manufacturer = enocean.utils.from_bitarray(
             self._bit_data[DB3.BIT_2 : DB2.BIT_7] + self._bit_data[DB4.BIT_7 : DB3.BIT_7]
         )  # noqa: E501
-        # Number of channels to teach in (0xFF: all); `channel` is a deprecated alias
-        self.number_of_channels = self.channel = self.data[2]
+        # Number of channels to teach in (0xFF: all)
+        self.number_of_channels = self.data[2]
         self.rorg_type = self.data[5]
         self.rorg_func = self.data[6]
         self.rorg_of_eep = self.data[7]

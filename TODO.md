@@ -27,7 +27,8 @@ Dépréciations à retirer (changements incompatibles : version 2.0, avec guide 
 - [x] `enocean.decorators` et les tests `@timing` supprimés (inactifs sans `WITH_TIMINGS=1`)
 - [x] `script-files` retiré : `enocean_example.py` n'est plus installé dans le PATH (il reste dans `examples/`)
 - [x] Ré-export de `RORG` dans `enocean.protocol.eep` retiré
-- [ ] `UTETeachInPacket.channel`, alias mal nommé de `number_of_channels`
+- [x] `UTETeachInPacket.channel` déprécié (`DeprecationWarning`) au profit de `number_of_channels` ; à supprimer à la
+      version majeure suivante
 
 ## 2. API d'intégration (d'après l'usage dans enocean-sniffer)
 
