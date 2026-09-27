@@ -14,8 +14,7 @@ Bugs :
 - [x] `UTETeachInPacket.number_of_channels` est lu depuis la trame (était toujours `0xFF`)
 - [x] `RadioPacket.learn` documenté : toujours `True` pour RPS et VLD (pas de bit d'apprentissage, tout télégramme
       peut servir au teach-in) ; le passer à `None` casserait les applications qui s'en servent pour l'appairage
-- [ ] `packet.received` : `datetime` naïf, et seulement renseigné par le communicator (le sniffer le formate avec `%z`,
-      qui sort vide) : horodatage UTC avec fuseau
+- [x] `packet.received` : horodatage UTC avec fuseau, posé par `parse_msg()` (était naïf et posé par le communicator)
 - [ ] `SerialCommunicator` n'accepte pas `teach_in` (le sniffer le modifie après `start()`, avec une course possible)
       et son port par défaut est `/dev/ttyAMA0` (UART de Raspberry Pi)
 - [x] Setter de `base_id` documenté pour ses vrais usages (ID déjà connu)

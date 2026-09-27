@@ -1,8 +1,10 @@
+import datetime
+
 import pytest
 
 from enocean.decorators import timing
-from enocean.protocol.constants import EVENT_CODE, PACKET, PARSE_RESULT
-from enocean.protocol.packet import EventPacket, Packet
+from enocean.protocol.constants import EVENT_CODE, PACKET, PARSE_RESULT, RORG
+from enocean.protocol.packet import EventPacket, Packet, RadioPacket
 
 
 @timing(1000)
@@ -226,3 +228,17 @@ def test_packet_accepts_bytes():
 def test_packet_rejects_other_data_types():
     with pytest.raises(TypeError):
         Packet(PACKET.COMMON_COMMAND, 'not bytes')
+
+
+def test_parsed_packets_are_timestamped_in_utc():
+    before = datetime.datetime.now(datetime.timezone.utc)
+    # fmt: off
+    _, _, packet = Packet.parse_msg(bytearray([
+        0x55, 0x00, 0x05, 0x00, 0x02, 0xCE, 0x00, 0xFF, 0x87, 0xCA, 0x00, 0xA3,
+    ]))
+    # fmt: on
+
+    assert packet.received.tzinfo is datetime.timezone.utc
+    assert before <= packet.received <= datetime.datetime.now(datetime.timezone.utc)
+    assert Packet(PACKET.COMMON_COMMAND, [0x08]).received is None
+    assert RadioPacket.create(rorg=RORG.RPS, rorg_func=0x02, rorg_type=0x02, EB='pressed').received is None
