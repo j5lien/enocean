@@ -30,6 +30,8 @@ Towards 2.0.0: fixes and removal of deprecated APIs, before reworking the public
 - `packet.to_dict()`: JSON-serializable view of a packet (hex IDs, enum names that don't raise on unknown values,
   ISO reception time, EEP and decoded values).
 - `EEPId` (`EEPId.parse('D2-01-12')`), `packet.eep_id` and `packet.command`: the profile and command variant applied.
+- `communicator.learn(timeout, max_devices)`: a teach-in window answering UTE teach-in requests even with
+  `teach_in=False`, adding the taught-in devices to the device registry and returning them.
 - `SwitchActuator` (D2-01: `set_output`, `turn_on`, `turn_off`, `query_status`) and `BlindActuator` (D2-05: `go_to`,
   `stop`, `query_position`) in `enocean.actuators`, sending from the module's base ID.
 - `DeviceRegistry` / `Device` (`enocean.devices`): known devices and their profiles, default profiles per RORG and
@@ -44,6 +46,8 @@ Towards 2.0.0: fixes and removal of deprecated APIs, before reworking the public
 
 ### Fixed
 
+- UTE teach-in: deletion requests were answered as accepted teach-ins; they are now answered as deletions (as are
+  non-specific requests from devices already known), and requests for profiles unknown to `EEP.xml` are refused.
 - Profiles with several commands (e.g. D2-01-12, D2-05-00): decoding without `command=` picks the variant the
   telegram carries instead of the profile's first one (e.g. a D2-01-12 "set output" command was decoded with the
   status layout).

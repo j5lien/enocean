@@ -346,3 +346,82 @@ def test_actuator_command_is_written_to_serial(pty_port, running):
     written = module.read_packet()
     assert written.data == [0xD2, 0x01, 0x01, 0x64, 0xFF, 0xC3, 0x6F, 0x80, 0x00]
     assert written.optional[1:5] == [0x05, 0x99, 0x77, 0xAF]
+
+
+def ute_request(request_type, eep=(0xD2, 0x01, 0x01), sender=(0x01, 0x94, 0xE3, 0xB9)):
+    """A UTE teach-in query from an actuator: bidirectional, response expected, 1 channel, NodOn (0x046)."""
+    rorg, func, type_ = eep
+    db6 = 0x80 | (request_type << 4)
+    data = [RORG.UTE, db6, 0x01, 0x46, 0x00, type_, func, rorg, *sender, 0x00]
+    return bytes(RadioPacket(PACKET.RADIO_ERP1, data, [0x01, 0xFF, 0xFF, 0xFF, 0xFF, 0x40, 0x00]).build())
+
+
+def teach_in_result(response):
+    """DB6 bits 5-4 of a UTE response: 1 accepted, 2 deleted, 3 EEP not supported."""
+    assert response.rorg == RORG.UTE and response.data[1] & 0x0F == 1
+    return (response.data[1] >> 4) & 0x03
+
+
+def test_learn_window_teaches_in_devices(pty_port, running):
+    from enocean.devices import DeviceRegistry
+
+    module, port = pty_port
+    registry = DeviceRegistry()
+    com = SerialCommunicator(port=port, teach_in=False, devices=registry)
+    com.base_id = [0xFF, 0xC3, 0x6F, 0x80]
+    running(com)
+
+    threading.Timer(0.2, module.write, [ute_request(UTETeachInPacket.TEACH_IN)]).start()
+    learned = com.learn(timeout=TIMEOUT, max_devices=1)
+
+    assert [(d.id, str(d.eep)) for d in learned] == [('01:94:E3:B9', 'D2-01-01')]
+    assert registry.get('01:94:E3:B9').eep == learned[0].eep
+    response = module.read_packet()
+    assert teach_in_result(response) == 1
+    assert response.sender_hex == 'FF:C3:6F:80' and response.destination_hex == '01:94:E3:B9'
+    assert not com.learning
+    # Outside the window, with teach_in=False, requests are ignored again
+    module.write(ute_request(UTETeachInPacket.TEACH_IN, sender=(0x01, 0x02, 0x03, 0x04)))
+    module.assert_silent()
+
+
+def test_learn_times_out_without_devices(pty_port, running):
+    module, port = pty_port
+    com = running(SerialCommunicator(port=port, teach_in=False))
+    assert com.learn(timeout=0.2) == []
+    assert com.devices is not None
+
+
+def test_teach_in_deletion(pty_port, running):
+    from enocean.devices import Device, DeviceRegistry
+    from enocean.protocol.eep import EEPId
+
+    module, port = pty_port
+    registry = DeviceRegistry(
+        [Device('01:94:E3:B9', EEPId.parse('D2-01-01')), Device('01:02:03:04', EEPId(0xD2, 1, 1))]
+    )
+    com = SerialCommunicator(port=port, devices=registry)
+    com.base_id = [0xFF, 0xC3, 0x6F, 0x80]
+    running(com)
+
+    module.write(ute_request(UTETeachInPacket.DELETE))
+    assert teach_in_result(module.read_packet()) == 2
+    # Not specific, from a device already known: deletion too
+    module.write(ute_request(UTETeachInPacket.NOT_SPECIFIC, sender=(0x01, 0x02, 0x03, 0x04)))
+    assert teach_in_result(module.read_packet()) == 2
+    assert len(registry) == 0
+
+
+def test_teach_in_of_unsupported_profile_is_refused(pty_port, running):
+    from enocean.devices import DeviceRegistry
+
+    module, port = pty_port
+    registry = DeviceRegistry()
+    com = SerialCommunicator(port=port, devices=registry)
+    com.base_id = [0xFF, 0xC3, 0x6F, 0x80]
+    running(com)
+
+    module.write(ute_request(UTETeachInPacket.TEACH_IN, eep=(0xD2, 0x7F, 0x7F)))
+
+    assert teach_in_result(module.read_packet()) == 3
+    assert len(registry) == 0
