@@ -105,7 +105,7 @@ class CommunicatorStats:
             packets=(previous.packets if previous else 0) + 1,
             last_seen_at=now,
             rorg=int(packet.rorg),
-            dbm=packet.dBm if len(packet.optional) >= 6 else None,
+            dbm=packet.dbm,
         )
         while len(self._senders) > self._max_senders:
             self._senders.popitem(last=False)

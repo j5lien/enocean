@@ -23,9 +23,12 @@ Towards 2.0.0: fixes and removal of deprecated APIs, before reworking the public
 ### Deprecated
 
 - `UTETeachInPacket.channel`: use `number_of_channels`.
+- `RadioPacket.dBm`: use `dbm`, which is `None` instead of 0 when the module didn't report the signal strength.
 
 ### Added
 
+- The public API is importable from the package: `from enocean import SerialCommunicator, RadioPacket, RORG`;
+  `enocean.__version__`.
 - `SerialCommunicator(teach_in=...)`, like `TCPCommunicator`.
 - `Packet(...)` accepts `bytes` and `bytearray` data.
 
