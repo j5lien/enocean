@@ -214,7 +214,7 @@ toml = [
 
 [[package]]
 name = "enocean"
-version = "0.60.1"
+version = "1.0.0"
 source = { editable = "." }
 dependencies = [
     { name = "pyserial" },
