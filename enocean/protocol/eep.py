@@ -62,7 +62,7 @@ def _range_and_scale(element: Element) -> tuple[float, float, float, float]:
 
 @dataclass(frozen=True)
 class FieldDescription:
-    """One field of a profile variant, as defined in EEP.xml."""
+    """One field of a profile variant, as defined in the profile's XML."""
 
     shortcut: str
     description: str | None
@@ -118,35 +118,73 @@ def _describe_field(tag: Element) -> FieldDescription:
     )
 
 
+PROFILES_DIR = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'profiles')
+
+
+class _Profiles(Mapping[int, Element]):
+    """The profiles of one RORG and FUNC, by TYPE: each file is parsed the first time it is used."""
+
+    def __init__(self, eep: 'EEP', rorg: int, func: int, types: Iterable[int]) -> None:
+        self._eep, self._rorg, self._func = eep, rorg, func
+        self._types = tuple(sorted(types))
+
+    def __getitem__(self, type_: int) -> Element:
+        if type_ not in self._types:
+            raise KeyError(type_)
+        return self._eep._load(self._rorg, self._func, type_)
+
+    def __contains__(self, type_: object) -> bool:
+        return type_ in self._types
+
+    def __iter__(self) -> Iterator[int]:
+        return iter(self._types)
+
+    def __len__(self) -> int:
+        return len(self._types)
+
+
 class EEP:
+    """
+    The EnOcean Equipment Profiles known to the library (enocean/protocol/profiles/, generated from the official
+    specification). Only the index is read on construction; each profile is parsed the first time it is used.
+    """
+
     logger = logging.getLogger('enocean.protocol.eep')
 
     def __init__(self) -> None:
         self.init_ok = False
-        self.telegrams: dict[int, dict[int, dict[int, Element]]] = {}
-
-        eep_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'EEP.xml')
+        # telegrams[rorg][func][type] -> the <profile> element, loaded on first access
+        self.telegrams: dict[int, dict[int, Mapping[int, Element]]] = {}
+        self._loaded: dict[tuple[int, int, int], Element] = {}
         try:
-            self.xml_root = ElementTree.parse(eep_path).getroot()
+            self.xml_index = ElementTree.parse(os.path.join(PROFILES_DIR, 'index.xml')).getroot()
             self.init_ok = True
-            self.__load_xml()
+            self.__load_index()
         except (OSError, ElementTree.ParseError):
-            # Impossible to test with the current structure?
-            # To be honest, as the XML is included with the library,
-            # there should be no possibility of ever reaching this...
+            # The profiles ship with the library: this only happens with a broken installation
             self.logger.warning('Cannot load protocol file!')
             self.init_ok = False
 
-    def __load_xml(self) -> None:
+    def __load_index(self) -> None:
         self.telegrams = {
             int(_attr(telegram, 'rorg'), 16): {
-                int(_attr(function, 'func'), 16): {
-                    int(_attr(type, 'type'), 16): type for type in function.iter('profile')
-                }
+                int(_attr(function, 'func'), 16): _Profiles(
+                    self,
+                    int(_attr(telegram, 'rorg'), 16),
+                    int(_attr(function, 'func'), 16),
+                    (int(_attr(profile, 'type'), 16) for profile in function.iter('profile')),
+                )
                 for function in telegram.iter('profiles')
             }
-            for telegram in self.xml_root.iter('telegram')
+            for telegram in self.xml_index.iter('telegram')
         }
+
+    def _load(self, rorg: int, func: int, type_: int) -> Element:
+        key = (rorg, func, type_)
+        if key not in self._loaded:
+            path = os.path.join(PROFILES_DIR, '%02X-%02X-%02X.xml' % key)
+            self._loaded[key] = ElementTree.parse(path).getroot()
+        return self._loaded[key]
 
     @staticmethod
     def _find_child(source: Element, tag: str, **attributes: object) -> Element | None:
@@ -296,7 +334,7 @@ class EEP:
         return bitarray
 
     def profiles(self) -> Iterator[EEPId]:
-        """Every profile defined in EEP.xml."""
+        """Every profile known to the library."""
         for rorg, functions in sorted(self.telegrams.items()):
             for func, types in sorted(functions.items()):
                 for type_ in sorted(types):
@@ -312,7 +350,7 @@ class EEP:
         function = next(
             (
                 f.get('description')
-                for telegram in self.xml_root.iter('telegram')
+                for telegram in self.xml_index.iter('telegram')
                 if int(_attr(telegram, 'rorg'), 16) == eep_id.rorg
                 for f in telegram.iter('profiles')
                 if int(_attr(f, 'func'), 16) == eep_id.func
@@ -347,7 +385,7 @@ class EEP:
         given, else the one whose conditions the telegram's data bits (bitarray) and status bits match.
         """
         if not self.init_ok:
-            self.logger.warning('EEP.xml not loaded!')
+            self.logger.warning('EEP profiles not loaded!')
             return None
 
         if eep_rorg not in self.telegrams:

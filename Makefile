@@ -29,11 +29,11 @@ lint:
 format:
 	uv run ruff format
 
-eep:  ## Regenerate enocean/protocol/EEP.xml from the official EEP specification (downloaded) and tools/eep_additions.xml
+eep:  ## Regenerate enocean/protocol/profiles/ from the official EEP specification (downloaded) and tools/eep_additions.xml
 	uv run python tools/generate_eep.py
 	uv run python generate_supported_profiles.py
 
-profiles:  ## Regenerate SUPPORTED_PROFILES.md from EEP.xml
+profiles:  ## Regenerate SUPPORTED_PROFILES.md from the profiles
 	uv run python generate_supported_profiles.py
 
 clean:

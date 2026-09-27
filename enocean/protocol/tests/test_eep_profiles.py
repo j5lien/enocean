@@ -1,11 +1,11 @@
 """
-Data-driven tests over every profile defined in EEP.xml.
+Data-driven tests over every profile of the library (enocean/protocol/profiles/).
 
 - Structural checks: every field fits in the telegram, fields don't overlap, enum values fit in their bits,
   value fields have a usable range, shortcuts are unique.
 - Round trip: every enum value and both ends of every value field survive RadioPacket.create() -> parse.
 - Snapshot: decoding of fixed bit patterns for every profile is compared to eep_snapshot.json, as a safety net
-  when changing how EEP.xml is loaded or interpreted. After an intended change to decoding or to EEP.xml,
+  when changing how profiles are generated, loaded or interpreted. After an intended change to decoding or profiles,
   regenerate it with `UPDATE_EEP_SNAPSHOT=1 uv run pytest enocean/protocol/tests/test_eep_profiles.py`
   and review the diff.
 """
