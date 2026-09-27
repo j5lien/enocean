@@ -380,3 +380,8 @@ def test_fails():
         Packet.create(PACKET.RADIO_ERP1, 0xA5, 0x01, 0x01, destination='ASDASDASD')
     with pytest.raises(ValueError):
         Packet.create(PACKET.RADIO_ERP1, 0xA5, 0x01, 0x01, sender='ASDASDASD')
+
+
+def test_create_with_unknown_vld_profile():
+    with pytest.raises(ValueError):
+        RadioPacket.create(rorg=RORG.VLD, rorg_func=0x7F, rorg_type=0x7F)
