@@ -96,3 +96,25 @@ def test_callback_receives_packets(free_tcp_port, running):
 
     assert received.get(timeout=TIMEOUT).sender_hex == '01:81:B7:44'
     assert com.receive.empty()
+
+
+def test_exception_in_callback_does_not_kill_communicator(free_tcp_port, running):
+    received = []
+
+    def callback(packet):
+        received.append(packet)
+        if len(received) == 1:
+            raise RuntimeError('boom')
+
+    com = running(TCPCommunicator(host='127.0.0.1', port=free_tcp_port, callback=callback))
+
+    for _ in range(2):
+        client = connect(free_tcp_port)
+        client.sendall(RADIO_FRAME)
+        client.close()
+
+    deadline = time.time() + TIMEOUT
+    while len(received) < 2 and time.time() < deadline:
+        time.sleep(0.01)
+    assert len(received) == 2
+    assert com.is_alive()

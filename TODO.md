@@ -34,8 +34,6 @@ Remise à niveau du fork `j5lien/enocean`. Cocher au fur et à mesure.
       ancienneté du dernier paquet reçu ; par émetteur (dernier vu, dBm) seulement en option, à cause de la
       cardinalité des labels
 - [ ] Santé : état exploitable pour une sonde (thread vivant, port ouvert, dernier paquet reçu il y a N s)
-- [ ] Logs : niveaux revus (les erreurs CRC sur bruit radio sont aujourd'hui en `ERROR`), option de logs
-      structurés
 
 ## Dépôt GitHub
 
@@ -71,3 +69,5 @@ Remise à niveau du fork `j5lien/enocean`. Cocher au fur et à mesure.
 - [x] Hooks pre-commit (`make hooks`) utilisant les outils de `uv.lock` ; `pyserial>=3.5`
 - [x] Release 1.0.0 : `CHANGELOG.md`, workflow de release sur tag (release GitHub avec wheel/sdist, sans PyPI)
 - [x] Fork détaché de `kipe/enocean`, `main` protégée
+- [x] Logs : niveaux revus (bruit radio en DEBUG, télégramme corrompu en WARNING, traces complètes des erreurs de
+      callback), `NullHandler`, champs structurés (`packet_type`, `rorg`, `sender`, `dbm`), `init_logging(json_format=True)`

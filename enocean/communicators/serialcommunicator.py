@@ -42,8 +42,9 @@ class SerialCommunicator(Communicator):
 
             try:
                 self.parse()
-            except Exception as e:
-                self.logger.error('Parse exception: %s', e)
+            except Exception:
+                # Most likely raised by the user's callback: keep running, but with the full traceback
+                self.logger.exception('Error while processing received packets')
 
             time.sleep(0)
 

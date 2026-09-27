@@ -6,7 +6,18 @@ from collections.abc import Callable
 from typing import TypeGuard
 
 from enocean.protocol.constants import PACKET, PARSE_RESULT, RETURN_CODE
-from enocean.protocol.packet import Packet, ResponsePacket, UTETeachInPacket
+from enocean.protocol.packet import Packet, RadioPacket, ResponsePacket, UTETeachInPacket
+from enocean.utils import to_hex_string
+
+
+def packet_log_fields(packet: Packet) -> dict[str, object]:
+    """Fields attached to log records about a packet, for structured log handlers."""
+    fields: dict[str, object] = {'packet_type': int(packet.packet_type)}
+    if isinstance(packet, RadioPacket):
+        fields['rorg'] = int(packet.rorg)
+        fields['sender'] = packet.sender_hex
+        fields['dbm'] = packet.dBm
+    return fields
 
 
 class Communicator(threading.Thread):
@@ -43,8 +54,7 @@ class Communicator(threading.Thread):
         """Get message from send queue, if one exists"""
         try:
             packet = self.transmit.get(block=False)
-            self.logger.info('Sending packet')
-            self.logger.debug(packet)
+            self.logger.debug('Sending %s', packet, extra=packet_log_fields(packet))
             return packet
         except queue.Empty:
             pass
@@ -75,6 +85,7 @@ class Communicator(threading.Thread):
 
                 if self._base_id_requested and self._is_base_id_response(packet):
                     self._base_id = packet.response_data
+                    self.logger.info('Base ID of the module: %s', to_hex_string(self._base_id))
                     self._base_id_requested = False
                     self._base_id_received.set()
                     self._answer_pending_teach_ins()
@@ -84,11 +95,11 @@ class Communicator(threading.Thread):
                     if self.base_id is not None:
                         self._answer_pending_teach_ins()
 
+                self.logger.debug('Received %s', packet, extra=packet_log_fields(packet))
                 if self.__callback is None:
                     self.receive.put(packet)
                 else:
                     self.__callback(packet)
-                self.logger.debug(packet)
 
     @staticmethod
     def _is_base_id_response(packet: Packet) -> TypeGuard[ResponsePacket]:
@@ -106,7 +117,14 @@ class Communicator(threading.Thread):
             packet = self._pending_teach_ins.pop(0)
             if packet.sender == self._base_id:
                 continue
-            self.logger.info('Sending response to UTE teach-in.')
+            self.logger.info(
+                'Answering UTE teach-in from %s (EEP %02X-%02X-%02X).',
+                packet.sender_hex,
+                packet.rorg_of_eep,
+                packet.rorg_func,
+                packet.rorg_type,
+                extra=packet_log_fields(packet),
+            )
             self.send(packet.create_response_packet(self._base_id))
 
     def _request_base_id(self) -> None:

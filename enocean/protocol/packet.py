@@ -33,13 +33,13 @@ class Packet:
         self.optional: list[int]
 
         if not isinstance(data, list) or data is None:
-            self.logger.warning('Replacing Packet.data with default value.')
+            self.logger.debug('Replacing Packet.data with default value.')
             self.data = []
         else:
             self.data = data
 
         if not isinstance(optional, list) or optional is None:
-            self.logger.warning('Replacing Packet.optional with default value.')
+            self.logger.debug('Replacing Packet.optional with default value.')
             self.optional = []
         else:
             self.optional = optional
@@ -132,7 +132,8 @@ class Packet:
         # Check the header CRC before trusting the lengths it announces: a stray 0x55 or a corrupted header
         # would otherwise make us wait for, and then drop, bytes belonging to the following valid packets.
         if buf[5] != crc8.calc(buf[1:5]):
-            Packet.logger.error('Header CRC error!')
+            # Expected on a noisy line: every stray 0x55 lands here while resynchronizing
+            Packet.logger.debug('Header CRC error, resynchronizing.')
             # Skip only the sync byte and resynchronize on the next 0x55
             return PARSE_RESULT.CRC_MISMATCH, buf[1:], None
 
@@ -151,7 +152,12 @@ class Packet:
         opt_data = msg[6 + data_len : 6 + data_len + opt_len]
 
         if msg[-1] != crc8.calc(msg[6:-1]):
-            Packet.logger.error('Data CRC error!')
+            Packet.logger.warning(
+                'Data CRC error on a %d byte packet (type 0x%02X), dropping it.',
+                msg_len,
+                packet_type,
+                extra={'packet_type': packet_type},
+            )
             # The message may be a truncated packet running into the next one: skip only the sync byte
             return PARSE_RESULT.CRC_MISMATCH, buf[1:], None
 
@@ -212,13 +218,13 @@ class Packet:
             raise ValueError('RORG not supported by this function.')
 
         if destination is None:
-            Packet.logger.warning('Replacing destination with broadcast address.')
+            Packet.logger.debug('Replacing destination with broadcast address.')
             destination = [0xFF, 0xFF, 0xFF, 0xFF]
 
         # TODO: Should use the correct Base ID as default.
         #       Might want to change the sender to be an offset from the actual address?
         if sender is None:
-            Packet.logger.warning('Replacing sender with default address.')
+            Packet.logger.debug('Replacing sender with default address.')
             sender = [0xDE, 0xAD, 0xBE, 0xEF]
 
         if not isinstance(destination, list) or len(destination) != 4:
@@ -391,9 +397,12 @@ class RadioPacket(Packet):
                     self.rorg_type = enocean.utils.from_bitarray(self._bit_data[DB3.BIT_1 : DB2.BIT_2])
                     self.rorg_manufacturer = enocean.utils.from_bitarray(self._bit_data[DB2.BIT_2 : DB0.BIT_7])
                     self.logger.debug(
-                        'learn received, EEP detected, RORG: 0x%02X, FUNC: 0x%02X, TYPE: 0x%02X, Manufacturer: 0x%02X'
-                        % (self.rorg, self.rorg_func, self.rorg_type, self.rorg_manufacturer)
-                    )  # noqa: E501
+                        'learn received, EEP detected, RORG: 0x%02X, FUNC: 0x%02X, TYPE: 0x%02X, Manufacturer: 0x%02X',
+                        self.rorg,
+                        self.rorg_func,
+                        self.rorg_type,
+                        self.rorg_manufacturer,
+                    )
 
         return super().parse()
 
