@@ -15,7 +15,7 @@ from enocean.communicators.serialcommunicator import SerialCommunicator
 from enocean.protocol.constants import PACKET, RORG
 from enocean.protocol.packet import Packet, RadioPacket, UTETeachInPacket
 
-from conftest import BASE_ID_RESPONSE_FRAME, RADIO_FRAME, TIMEOUT, UTE_TEACH_IN_FRAME
+from conftest import BASE_ID_RESPONSE_FRAME, RADIO_FRAME, TIMEOUT, UTE_TEACH_IN_FRAME, wait_until
 
 
 def test_radio_frame_is_received_and_decoded(pty_port, running):
@@ -97,6 +97,7 @@ def test_exception_in_callback_does_not_kill_communicator(pty_port, running):
 
     assert len(received) == 2
     assert com.is_alive()
+    assert com.stats.snapshot().processing_errors == 1
 
 
 def test_sent_packet_is_written_to_serial(pty_port, running):
@@ -110,6 +111,10 @@ def test_sent_packet_is_written_to_serial(pty_port, running):
 
     written = module.read_packet()
     assert written.build() == packet.build()
+    assert wait_until(lambda: com.stats.snapshot().packets_sent)
+    snapshot = com.stats.snapshot()
+    assert snapshot.packets_sent == {(PACKET.RADIO_ERP1, RORG.RPS): 1}
+    assert snapshot.bytes_sent == len(packet.build())
 
 
 def test_base_id_is_fetched_from_module(pty_port, running):
@@ -182,6 +187,7 @@ def test_device_disconnect_stops_communicator(pty_port, running):
 
     com.join(TIMEOUT)
     assert not com.is_alive()
+    assert com.stats.snapshot().transport_errors == 1
 
 
 def test_common_command_packet_roundtrip(pty_port, running):
@@ -252,3 +258,4 @@ def test_ute_teach_in_fetches_unknown_base_id_then_answers(pty_port, running):
     assert response.sender_hex == 'FF:87:CA:00'
     assert response.destination_hex == '01:94:E3:B9'
     assert isinstance(com.receive.get(timeout=TIMEOUT), UTETeachInPacket)
+    assert wait_until(lambda: com.stats.snapshot().teach_in_responses == 1)

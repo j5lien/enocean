@@ -27,17 +27,22 @@ class SerialCommunicator(Communicator):
                 packet = self._get_from_send_queue()
                 if not packet:
                     break
+                data = bytearray(packet.build())
                 try:
-                    self.__ser.write(bytearray(packet.build()))
+                    self.__ser.write(data)
                 except serial.SerialException:
                     self.logger.error('Serial port exception while writing! (device disconnected?)')
+                    self.stats.record_transport_error()
                     self.stop()
+                else:
+                    self.stats.record_sent(packet, len(data))
 
             # Read chars from serial port as hex numbers
             try:
-                self._buffer.extend(bytearray(self.__ser.read(16)))
+                self._feed(self.__ser.read(16))
             except serial.SerialException:
                 self.logger.error('Serial port exception! (device disconnected or multiple access on port?)')
+                self.stats.record_transport_error()
                 self.stop()
 
             try:
@@ -45,6 +50,7 @@ class SerialCommunicator(Communicator):
             except Exception:
                 # Most likely raised by the user's callback: keep running, but with the full traceback
                 self.logger.exception('Error while processing received packets')
+                self.stats.record_processing_error()
 
             time.sleep(0)
 

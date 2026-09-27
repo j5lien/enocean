@@ -2,11 +2,13 @@ import datetime
 import logging
 import queue
 import threading
+import time
 from collections.abc import Callable
 from typing import TypeGuard
 
 from enocean.protocol.constants import PACKET, PARSE_RESULT, RETURN_CODE
 from enocean.protocol.packet import Packet, RadioPacket, ResponsePacket, UTETeachInPacket
+from enocean.stats import CommunicatorStats
 from enocean.utils import to_hex_string
 
 
@@ -43,9 +45,12 @@ class Communicator(threading.Thread):
         self._base_id: list[int] | None = None
         # Set while a CO_RD_IDBASE request is waiting for its response
         self._base_id_requested = False
+        self._base_id_requested_at = 0.0
         self._base_id_received = threading.Event()
         # UTE teach-in requests waiting for the Base ID before they can be answered
         self._pending_teach_ins: list[UTETeachInPacket] = []
+        # Runtime statistics, see enocean.stats
+        self.stats = CommunicatorStats()
         # Should new messages be learned automatically? Defaults to True.
         # TODO: Not sure if we should use CO_WR_LEARNMODE??
         self.teach_in = teach_in
@@ -67,6 +72,11 @@ class Communicator(threading.Thread):
         self.transmit.put(packet)
         return True
 
+    def _feed(self, data: bytes | bytearray) -> None:
+        """Appends bytes read from the transport to the parse buffer."""
+        self._buffer.extend(bytearray(data))
+        self.stats.record_bytes_received(len(data))
+
     def stop(self) -> None:
         self._stop_flag.set()
 
@@ -74,7 +84,7 @@ class Communicator(threading.Thread):
         """Parses messages and puts them to receive queue"""
         # Loop while we get new messages
         while True:
-            status, self._buffer, packet = Packet.parse_msg(self._buffer)
+            status, self._buffer, packet = Packet.parse_msg(self._buffer, on_error=self.stats.record_parse_error)
             # If message is incomplete -> break the loop
             if status == PARSE_RESULT.INCOMPLETE:
                 return status
@@ -82,11 +92,13 @@ class Communicator(threading.Thread):
             # If message is OK, add it to receive queue or send to the callback method
             if status == PARSE_RESULT.OK and packet:
                 packet.received = datetime.datetime.now()
+                self.stats.record_received(packet)
 
                 if self._base_id_requested and self._is_base_id_response(packet):
                     self._base_id = packet.response_data
                     self.logger.info('Base ID of the module: %s', to_hex_string(self._base_id))
                     self._base_id_requested = False
+                    self.stats.record_base_id_received(time.monotonic() - self._base_id_requested_at)
                     self._base_id_received.set()
                     self._answer_pending_teach_ins()
 
@@ -126,11 +138,14 @@ class Communicator(threading.Thread):
                 extra=packet_log_fields(packet),
             )
             self.send(packet.create_response_packet(self._base_id))
+            self.stats.record_teach_in_response()
 
     def _request_base_id(self) -> None:
         if not self._base_id_requested:
             self._base_id_requested = True
+            self._base_id_requested_at = time.monotonic()
             self._base_id_received.clear()
+            self.stats.record_base_id_request()
             # Send COMMON_COMMAND 0x08, CO_RD_IDBASE request to the module
             self.send(Packet(PACKET.COMMON_COMMAND, data=[0x08]))
 
@@ -147,6 +162,7 @@ class Communicator(threading.Thread):
         self._request_base_id()
         if threading.current_thread() is not self and not self._base_id_received.wait(1):
             self.logger.warning('No response from the module to the Base ID request.')
+            self.stats.record_base_id_timeout()
             self._base_id_requested = False
         # Return the current Base ID (might be None).
         return self._base_id
