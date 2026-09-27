@@ -87,3 +87,23 @@ def test_metrics_follow_the_communicator(registry):
     com.parse()
 
     assert registry.get_sample_value('enocean_received_bytes_total') == len(RADIO_FRAME)
+
+
+def test_per_sender_metrics_are_opt_in(registry):
+    com = communicator_with_traffic()
+    register(com, registry=registry)
+    assert registry.get_sample_value('enocean_senders_evicted_total') is None
+
+
+def test_per_sender_metrics(registry):
+    com = Communicator()
+    register(com, registry=registry, per_sender=True, max_senders=10)
+
+    com._feed(RADIO_FRAME)
+    com.parse()
+
+    labels = {'sender': '01:81:B7:44', 'rorg': 'bs4'}
+    assert registry.get_sample_value('enocean_sender_packets_received_total', labels) == 1
+    assert registry.get_sample_value('enocean_sender_dbm', labels) == -45
+    assert registry.get_sample_value('enocean_sender_last_seen_timestamp_seconds', labels) > 0
+    assert registry.get_sample_value('enocean_senders_evicted_total') == 0

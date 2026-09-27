@@ -100,3 +100,46 @@ def test_snapshot_is_a_copy():
     snapshot = stats.snapshot()
     stats.record_parse_error(HEADER_CRC_ERROR)
     assert snapshot.parse_errors[HEADER_CRC_ERROR] == 0
+
+
+def radio_frame(sender, optional=(0x03, 0xFF, 0xFF, 0xFF, 0xFF, 0x2D, 0x00)):
+    return frame(PACKET.RADIO_ERP1, [RORG.BS4, 0x00, 0x00, 0x55, 0x08] + list(sender) + [0x00], optional)
+
+
+def feed(com, *frames):
+    com._feed(b''.join(frames))
+    com.parse()
+
+
+def test_senders_are_not_tracked_by_default():
+    com = Communicator()
+    feed(com, RADIO_FRAME)
+    assert com.stats.snapshot().senders == {}
+
+
+def test_sender_tracking():
+    com = Communicator()
+    com.stats.enable_sender_tracking()
+
+    feed(com, RADIO_FRAME, RADIO_FRAME, radio_frame([0x01, 0x02, 0x03, 0x04], optional=()), BASE_ID_RESPONSE_FRAME)
+
+    senders = com.stats.snapshot().senders
+    assert set(senders) == {'01:81:B7:44', '01:02:03:04'}
+    assert senders['01:81:B7:44'].packets == 2
+    assert senders['01:81:B7:44'].dbm == -45
+    assert senders['01:81:B7:44'].rorg == RORG.BS4
+    # No optional data: signal strength unknown
+    assert senders['01:02:03:04'].dbm is None
+
+
+def test_sender_tracking_forgets_least_recently_heard():
+    com = Communicator()
+    com.stats.enable_sender_tracking(max_senders=2)
+
+    feed(
+        com, radio_frame([0, 0, 0, 1]), radio_frame([0, 0, 0, 2]), radio_frame([0, 0, 0, 1]), radio_frame([0, 0, 0, 3])
+    )
+
+    snapshot = com.stats.snapshot()
+    assert list(snapshot.senders) == ['00:00:00:01', '00:00:00:03']
+    assert snapshot.senders_evicted == 1
