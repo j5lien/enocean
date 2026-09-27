@@ -364,6 +364,17 @@ class Packet:
 
 
 class RadioPacket(Packet):
+    """
+    A radio telegram (ERP1).
+
+    Attributes set when parsing: `sender` / `destination` (4-byte IDs, also as `sender_hex` / `destination_hex`),
+    `dBm` (signal strength, 0 if the module didn't report it) and `learn`.
+
+    `learn` tells whether the telegram can be used to teach the device in. 1BS and 4BS telegrams carry a learn bit,
+    UTE telegrams a teach-in request; RPS and VLD telegrams have no learn bit, so `learn` is always True for them:
+    any of their telegrams may be used to teach the device in (e.g. pressing a rocker switch).
+    """
+
     destination: list[int] = [0xFF, 0xFF, 0xFF, 0xFF]
     dBm = 0
     sender: list[int] = [0xFF, 0xFF, 0xFF, 0xFF]
@@ -414,7 +425,7 @@ class RadioPacket(Packet):
             self.destination = self.optional[1:5]
             self.dBm = -self.optional[5]
         self.sender = self.data[-5:-1]
-        # Default to learn == True, as some devices don't have a learn button
+        # RPS and VLD have no learn bit: any of their telegrams may be used for teach-in
         self.learn = True
 
         self.rorg = self.data[0]
