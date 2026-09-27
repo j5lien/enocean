@@ -57,8 +57,13 @@ script-files = ["examples/enocean_example.py"]
 "enocean.protocol" = ["EEP.xml"]
 
 [tool.pytest.ini_options]
-testpaths = ["enocean"]
-addopts = "-q"
+testpaths = ["enocean", "hardware_tests"]
+# Hardware tests need a real EnOcean stick (configured in .env): `make test-hardware`
+addopts = "-q -m 'not hardware'"
+markers = [
+    "hardware: needs a real EnOcean USB stick configured in .env",
+    "interactive: asks the user to act on a real device (e.g. press a switch)",
+]
 filterwarnings = [
     # A crash in a communicator thread must fail the test, not just warn
     "error::pytest.PytestUnhandledThreadExceptionWarning",
@@ -87,7 +92,7 @@ ignore = ["UP031"]
 
 [tool.ruff.lint.isort]
 known-first-party = ["enocean"]
-known-local-folder = ["conftest"]
+known-local-folder = ["conftest", "stick"]
 
 [tool.ruff.lint.mccabe]
 max-complexity = 15

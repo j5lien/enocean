@@ -1,4 +1,4 @@
-.PHONY: install hooks test test-linux test-timing cov lint format profiles clean
+.PHONY: install hooks test test-hardware test-linux test-timing cov lint format profiles clean
 
 install:  ## Create .venv and install package + dev deps
 	uv sync
@@ -8,6 +8,9 @@ hooks:  ## Install the git pre-commit hooks
 
 test:
 	uv run pytest
+
+test-hardware:  ## Tests against the real EnOcean stick configured in .env (some ask you to press a switch)
+	uv run pytest hardware_tests -m hardware -vv
 
 PY ?= 3.14
 test-linux:  ## Run the test suite in a Linux container (make test-linux PY=3.10)
