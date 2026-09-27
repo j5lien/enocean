@@ -1,9 +1,11 @@
 import logging
 import time
+from collections.abc import Callable
 
 import serial
 
 from enocean.communicators.communicator import Communicator
+from enocean.protocol.packet import Packet
 
 
 class SerialCommunicator(Communicator):
@@ -11,12 +13,12 @@ class SerialCommunicator(Communicator):
 
     logger = logging.getLogger('enocean.communicators.SerialCommunicator')
 
-    def __init__(self, port='/dev/ttyAMA0', callback=None):
+    def __init__(self, port: str = '/dev/ttyAMA0', callback: Callable[[Packet], None] | None = None) -> None:
         super().__init__(callback)
         # Initialize serial port
         self.__ser = serial.Serial(port, 57600, timeout=0.1)
 
-    def run(self):
+    def run(self) -> None:
         self.logger.info('SerialCommunicator started')
         while not self._stop_flag.is_set():
             # If there's messages in transmit queue

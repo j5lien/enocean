@@ -1,18 +1,19 @@
 import functools
 import time
+from collections.abc import Callable
 from os import environ
 
 
-def timing(rounds=1, limit=None):
+def timing(rounds: int = 1, limit: float | None = None) -> Callable[[Callable[[], None]], Callable[[], None]]:
     """
     Wrapper to implement simple timing of tests.
     Allows running multiple rounds to calculate average time.
     Limit (in milliseconds) can be set to assert, if (average) duration is too high.
     """
 
-    def decorator(method):
+    def decorator(method: Callable[[], None]) -> Callable[[], None]:
         @functools.wraps(method)
-        def f():
+        def f() -> None:
             if rounds == 1:
                 start = time.time()
                 method()

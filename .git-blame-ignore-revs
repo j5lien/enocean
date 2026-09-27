@@ -1,0 +1,5 @@
+# Pure formatting commits, skipped by git blame.
+# GitHub uses this file automatically; locally: git config blame.ignoreRevsFile .git-blame-ignore-revs
+
+# Format the code base with ruff format
+ab2b36be5bacdca90140c9e5fd7584fdd14100f6
