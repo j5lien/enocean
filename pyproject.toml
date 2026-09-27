@@ -55,7 +55,12 @@ filterwarnings = [
 
 [tool.coverage.run]
 source = ["enocean"]
+omit = ["*/tests/*"]
 relative_files = true
+
+[tool.coverage.report]
+fail_under = 90
+show_missing = true
 
 [tool.ruff]
 line-length = 120
