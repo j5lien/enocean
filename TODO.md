@@ -1,7 +1,8 @@
 # TODO
 
 Remise à niveau du fork `j5lien/enocean`. Cocher au fur et à mesure. Les étapes numérotées sont à faire dans l'ordre :
-d'abord assainir, ensuite retravailler l'API publique, puis la documenter.
+d'abord assainir, ensuite retravailler l'API publique, régénérer les profils depuis la spec officielle, puis
+documenter.
 
 ## 1. Bugs et nettoyage (avant de retoucher l'API publique)
 
@@ -39,14 +40,38 @@ Dépréciations à retirer (changements incompatibles : version 2.0, avec guide 
       la clé
 - [x] Teach-in : `communicator.learn()` (fenêtre d'apprentissage), réponses correctes aux demandes de suppression et aux
       profils inconnus, registre mis à jour
-- [ ] Test matériel du teach-in avec un vrai actionneur (appairage réel de la clé : à faire avec un actionneur de test)
+- [ ] Test matériel du teach-in et de l'envoi avec un vrai actionneur (appairage réel de la clé ; demande de démonter un
+      actionneur, à planifier)
 - [x] API publique déclarée : `from enocean import SerialCommunicator, RadioPacket, RORG`, `__all__`,
       `__version__` ; `RadioPacket.dbm` (`None` si non rapporté) remplace `dBm`, déprécié
 - [x] Introspection des profils : `EEP().profiles()`, `EEP().describe('D2-01-12')`
 - [ ] Refaire enocean-sniffer avec la nouvelle version : valide l'API sur un vrai projet (registre, `to_dict()`,
       métriques Prometheus et logs JSON)
 
-## 3. Documentation de l'API
+## 3. `EEP.xml` généré depuis la spécification officielle
+
+Source de vérité : le XML officiel de l'EnOcean Alliance (EEP 2.6.8, 270 profils contre 65 aujourd'hui), publié sur
+l'EEP Viewer : https://tools.enocean-alliance.org/EEPViewer/profiles/eep268.xml. Décisions prises : le fichier officiel
+est téléchargé à la génération, **pas versionné** (aucune licence explicite : seul le dérivé est publié, comme
+aujourd'hui) ; on **s'aligne sur les noms officiels** des champs (version 2.0).
+
+- [ ] Script de génération (`make eep`) : télécharge le XML officiel (UTF-16) dans un cache ignoré par git, vérifie son
+      empreinte SHA-256, et le convertit vers notre format : résolution des `<ref>` (ex. D2-01-12 renvoie à la table
+      commune D2-01), `<case>`/`<condition>` → variantes par commande ou direction, champs réservés ignorés, enums
+      (`item`, plages), valeurs (plage, échelle, unité), `statusfield` → `status`
+- [ ] Fichier de compléments dans notre format, fusionné à la génération : profils absents de la 2.6.8 (D2-14-41) et
+      éventuels errata. Voir si les XML individuels de l'EEP Viewer (`profiles/<RORG>/<FUNC>/<TYPE>/...xml`) couvrent
+      les profils publiés depuis
+- [ ] `EEP.xml` devient un fichier généré (en-tête « ne pas modifier », version de la spec source) ; documenter la
+      procédure de mise à jour dans CLAUDE.md
+- [ ] Noms officiels : lister dans le CHANGELOG et le guide de migration les raccourcis et descriptions qui changent
+      pour les 65 profils actuels (ex. `ACT` → `Act`, `RBO` → `RB0`), à partir du diff du snapshot
+- [ ] Vérifier les écarts relevés entre notre XML et la spec : F6-10-00 (`WIN` en bits 2..3 chez nous, 0..7 dans la
+      spec), D2-14-30 (sous-champs de `SMA`), F6-02-04
+- [ ] Tests structurels, aller-retour et `SUPPORTED_PROFILES.md` étendus aux ~270 profils ; revalider les trames
+      réelles et les tests matériels
+
+## 4. Documentation de l'API
 
 - [ ] Docstrings sur toute l'API publique (54 classes/fonctions publiques sur 89 n'en ont pas) : paramètres, retour,
       exceptions, exemple sur les points d'entrée ; règles ruff `D` en CI pour ne plus en oublier
