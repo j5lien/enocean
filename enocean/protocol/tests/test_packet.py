@@ -1,3 +1,5 @@
+import pytest
+
 from enocean.decorators import timing
 from enocean.protocol.constants import EVENT_CODE, PACKET, PARSE_RESULT
 from enocean.protocol.packet import EventPacket, Packet
@@ -211,3 +213,16 @@ def test_event_packet():
     assert packet.event == EVENT_CODE.SA_RECLAIM_NOT_SUCCESFUL
     assert packet.event_data == []
     assert packet.optional == []
+
+
+def test_packet_accepts_bytes():
+    for data in ([0x08], bytes([0x08]), bytearray([0x08]), (0x08,)):
+        packet = Packet(PACKET.COMMON_COMMAND, data, bytearray([0x01]))
+        assert packet.data == [0x08]
+        assert packet.optional == [0x01]
+    assert Packet(PACKET.COMMON_COMMAND).data == []
+
+
+def test_packet_rejects_other_data_types():
+    with pytest.raises(TypeError):
+        Packet(PACKET.COMMON_COMMAND, 'not bytes')
