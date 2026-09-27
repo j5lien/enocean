@@ -11,17 +11,12 @@ Remise à niveau du fork `j5lien/enocean`. Cocher au fur et à mesure.
 - [ ] Une trame de référence par profil EEP (29/65 profils testés aujourd'hui), en commençant par les D2
       ajoutés en 2022 (D2-01-12, D2-14-30, …) — table de trames + valeurs attendues, tests paramétrés
 - [ ] Tests aller-retour `RadioPacket.create()` → `parse_msg()` → `parse_eep()` pour chaque profil supporté
-- [ ] Tests de robustesse du parseur avec `hypothesis` : ne plante jamais, ne boucle jamais, se resynchronise
 - [ ] Seuil de couverture minimum en CI (`--cov-fail-under`)
 - [ ] Décider du sort des tests `@timing` (inactifs sans `WITH_TIMINGS=1`) : les supprimer ou passer à `pytest-benchmark`
 - [ ] Couvrir `consolelogger.py` (0 %) ou le supprimer s'il ne sert qu'aux exemples
 
 ## Bugs
 
-- [ ] Resynchronisation ESP3 : sur CRC d'en-tête invalide, le parseur fait confiance à la longueur annoncée et jette
-      les trames valides qui suivent. Il faut sauter uniquement le `0x55` et chercher le suivant (spec ESP3)
-- [ ] Revoir les `except Exception` larges ajoutés dans `Packet.parse_msg` : une erreur de construction de paquet
-      est remontée comme `CRC_MISMATCH`
 - [ ] `Communicator.base_id` : bloque jusqu'à 1 s, et vide puis remplit à nouveau la queue `receive`
       (réordonne les paquets reçus pendant l'attente)
 - [ ] `SerialCommunicator` : une `SerialException` à l'écriture arrête le thread sans rien logger
@@ -64,3 +59,6 @@ Remise à niveau du fork `j5lien/enocean`. Cocher au fur et à mesure.
 - [x] Branche de référence `main`, anciennes branches supprimées
 - [x] Tests de bout en bout des communicators (pty pour le série, sockets pour le TCP), `make test-linux`
 - [x] Transport TCP réparé (crash à chaque connexion, `send_to_tcp_socket` cassé en Python 3)
+- [x] Tests de robustesse du parseur (`hypothesis`) ; resynchronisation ESP3 corrigée (CRC d'en-tête vérifié avant
+      d'attendre la longueur annoncée, seul le `0x55` est sauté en cas d'erreur) ; trames radio sans données
+      optionnelles acceptées ; trames trop courtes renvoyées brutes au lieu de lever une exception
