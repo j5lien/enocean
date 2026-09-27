@@ -107,7 +107,8 @@ class EEP(object):
             source['shortcut']: {
                 'description': source.get('description'),
                 'unit': source.get('unit', ''),
-                'value': value_desc['description'].format(value=raw_value) if value_desc and value_desc['description'] else '',
+                'value': (value_desc['description'].format(value=raw_value)
+                          if value_desc and value_desc['description'] else ''),
                 'raw_value': raw_value,
             }
         }
@@ -175,7 +176,8 @@ class EEP(object):
             return None
 
         if rorg_type not in self.telegrams[eep_rorg][rorg_func].keys():
-            self.logger.warn('Cannot find rorg %s func %s type %s in EEP!', hex(eep_rorg), hex(rorg_func), hex(rorg_type))
+            self.logger.warn('Cannot find rorg %s func %s type %s in EEP!',
+                             hex(eep_rorg), hex(rorg_func), hex(rorg_type))
             return None
 
         profile = self.telegrams[eep_rorg][rorg_func][rorg_type]

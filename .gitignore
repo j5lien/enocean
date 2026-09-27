@@ -17,3 +17,9 @@ dist
 pip-selfcheck.json
 
 .vscode/
+
+.venv/
+.pytest_cache/
+.coverage
+coverage.xml
+htmlcov/
