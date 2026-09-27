@@ -25,9 +25,8 @@ Dépréciations à retirer (changements incompatibles : version 2.0, avec guide 
 
 - [x] Alias `PACKET.RADIO` / `PACKET.RADIO_ADVANCED` retirés : `PACKET(1).name` vaut maintenant `RADIO_ERP1`
 - [x] `enocean.decorators` et les tests `@timing` supprimés (inactifs sans `WITH_TIMINGS=1`)
-- [ ] `script-files` (déprécié par setuptools) qui installe `enocean_example.py` dans le PATH : supprimer, ou le
-      remplacer par un point d'entrée `[project.scripts]`
-- [ ] Ré-export de `RORG` dans `enocean.protocol.eep` (« left as a helper »)
+- [x] `script-files` retiré : `enocean_example.py` n'est plus installé dans le PATH (il reste dans `examples/`)
+- [x] Ré-export de `RORG` dans `enocean.protocol.eep` retiré
 - [ ] `UTETeachInPacket.channel`, alias mal nommé de `number_of_channels`
 
 ## 2. API d'intégration (d'après l'usage dans enocean-sniffer)
