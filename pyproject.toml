@@ -5,7 +5,7 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "enocean"
 version = "0.60.1"
-description = "EnOcean serial protocol implementation"
+description = "EnOcean serial protocol (ESP3) and equipment profiles (EEP) implementation"
 readme = "README.md"
 classifiers = [
     "Programming Language :: Python :: 3",
@@ -20,13 +20,18 @@ classifiers = [
 ]
 license = { file = "LICENSE" }
 authors = [{ name = "Kimmo Huoman", email = "kipenroskaposti@gmail.com" }]
+maintainers = [{ name = "Julien Gobillot" }]
+keywords = ["enocean", "esp3", "eep", "home-automation", "serial"]
 requires-python = ">=3.10"
 dependencies = [
     "pyserial>=3.0",
 ]
 
 [project.urls]
-Homepage = "https://github.com/kipe/enocean"
+Homepage = "https://github.com/j5lien/enocean"
+Repository = "https://github.com/j5lien/enocean"
+Issues = "https://github.com/j5lien/enocean/issues"
+Upstream = "https://github.com/kipe/enocean"
 
 [dependency-groups]
 dev = [

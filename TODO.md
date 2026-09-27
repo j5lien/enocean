@@ -12,7 +12,6 @@ Remise à niveau du fork `j5lien/enocean`. Cocher au fur et à mesure.
       l'appareil, pour valider le décodage contre la réalité (les tests actuels vérifient la cohérence d'`EEP.xml`
       et figent le décodage, pas sa conformité à la spec)
 - [ ] Décider du sort des tests `@timing` (inactifs sans `WITH_TIMINGS=1`) : les supprimer ou passer à `pytest-benchmark`
-- [ ] Couvrir `consolelogger.py` (0 %) ou le supprimer s'il ne sert qu'aux exemples
 
 ## Bugs
 
@@ -30,9 +29,7 @@ Remise à niveau du fork `j5lien/enocean`. Cocher au fur et à mesure.
 
 ## Documentation / métadonnées
 
-- [ ] Réécrire le README : installation (`sudo pip`, `python-pip` obsolètes), installation depuis le fork,
-      environnement de dev (`make install`, `make test`)
-- [ ] Métadonnées du package : URL (pointe vers `kipe/enocean`), mainteneur, numéro de version, CHANGELOG
+- [ ] Numéro de version (toujours `0.60.1`, celle du projet d'origine) et CHANGELOG
 
 ## Dépôt GitHub
 
@@ -63,3 +60,5 @@ Remise à niveau du fork `j5lien/enocean`. Cocher au fur et à mesure.
       que le base ID soit connu : le base ID est demandé puis la réponse envoyée (avant : blocage 1 s du thread,
       `TypeError`, paquet perdu) ; `TCPCommunicator` accepte `callback`/`teach_in` et livre les paquets au fil de
       l'eau ; erreur d'écriture série loggée
+- [x] README réécrit (installation depuis le fork, exemples vérifiés, développement), métadonnées du package
+      (URL du fork, mainteneur, mots-clés), `consolelogger.py` testé (couverture de la librairie : 97 %)
