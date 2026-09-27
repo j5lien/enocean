@@ -6,9 +6,6 @@ from typing import Any, TypedDict
 from xml.etree import ElementTree
 from xml.etree.ElementTree import Element
 
-# Left as a helper
-from enocean.protocol.constants import RORG  # noqa: F401
-
 
 class FieldValue(TypedDict):
     """A decoded EEP field, as found in Packet.parsed."""
