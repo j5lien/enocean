@@ -9,7 +9,8 @@ Towards 2.0.0: fixes and removal of deprecated APIs, before reworking the public
 
 ### Breaking changes
 
-- `EEP.xml` is generated from the official EnOcean Alliance specification (EEP 2.6.8): field shortcuts and value
+- The profiles are generated from the official EnOcean Alliance specification (EEP 2.6.8), and `EEP.xml` is replaced
+  by `enocean/protocol/profiles/` (`EEP.xml_root` by `EEP.xml_index`; `EEP.telegrams` loads profiles on access): field shortcuts and value
   descriptions are the official ones. Renamed shortcuts in previously supported profiles: A5-07-01 `PIR` → `PIRS`,
   A5-09-06 `ACT` → `Act`, A5-09-07 `PM2.5`/`PM2.5a` → `PM25`/`PM25a`, A5-09-0C `CONC` → `Conc`, A5-11-02 `CTS` → `CST`,
   D2-01-xx `DE`/`DN`/`EP`/`QU`/`MDLSB`/`MDMSB` → `de`/`dn`/`ep`/`qu`/`MD_LSB`/`MD_MSB`, F6-02-04 `EB`/`RAO`/`RBO` →
@@ -37,6 +38,9 @@ Towards 2.0.0: fixes and removal of deprecated APIs, before reworking the public
 
 ### Added
 
+- Profiles are loaded on first use (one file per profile under `enocean/protocol/profiles/`): building `EEP()`
+  reads a small index (0.6 ms instead of 16 ms for the single 1.5 MB file), and importing `enocean` takes about half
+  the time (`__version__` is resolved on demand).
 - 270 profiles, generated from the official specification (205 more than before), with `make eep`; profiles
   missing from or unusable in the spec kept in `tools/eep_additions.xml` (D2-14-30, D2-14-41, F6-10-00, F6-10-01).
 - Profile variants selected by conditions on data or status bits (e.g. F6-02-02 by T21/NU, D2-01 extended commands by
