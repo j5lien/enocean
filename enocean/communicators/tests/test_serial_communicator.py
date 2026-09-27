@@ -1,25 +1,19 @@
-# -*- encoding: utf-8 -*-
 '''
 End-to-end tests for SerialCommunicator: the real communicator thread talks to a pseudo-terminal
 acting as the EnOcean module (see conftest.py), so the whole path from raw serial bytes to decoded
 packets (and from send() to bytes on the wire) is exercised.
 '''
 import os
+import queue
 import threading
 import time
 
-try:
-    import queue
-except ImportError:
-    import Queue as queue
-
 import pytest
+from conftest import BASE_ID_RESPONSE_FRAME, RADIO_FRAME, TIMEOUT, UTE_TEACH_IN_FRAME
 
 from enocean.communicators.serialcommunicator import SerialCommunicator
 from enocean.protocol.constants import PACKET, RORG
 from enocean.protocol.packet import Packet, RadioPacket, UTETeachInPacket
-
-from conftest import BASE_ID_RESPONSE_FRAME, RADIO_FRAME, TIMEOUT, UTE_TEACH_IN_FRAME
 
 
 def test_radio_frame_is_received_and_decoded(pty_port, running):

@@ -24,8 +24,6 @@ Remise à niveau du fork `j5lien/enocean`. Cocher au fur et à mesure.
 
 ## Montées de version / modernisation
 
-- [ ] Supprimer les restes de Python 2 : `from __future__`, fallback `Queue`,
-      `super(Class, self)`, dépendance `enum-compat`
 - [ ] Remonter la version minimale de `pyserial` (`>=3.0`, 2015)
 - [ ] `ruff format` sur tout le code (commit dédié), puis règles ruff supplémentaires (`UP`, `B`, `I`, `SIM`)
 - [ ] Annotations de type + `mypy` en CI + `py.typed`

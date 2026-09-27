@@ -22,7 +22,6 @@ license = { file = "LICENSE" }
 authors = [{ name = "Kimmo Huoman", email = "kipenroskaposti@gmail.com" }]
 requires-python = ">=3.10"
 dependencies = [
-    "enum-compat>=0.0.2",
     "pyserial>=3.0",
 ]
 

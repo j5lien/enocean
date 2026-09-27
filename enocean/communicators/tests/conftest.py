@@ -1,4 +1,3 @@
-# -*- encoding: utf-8 -*-
 '''
 Fixtures for end-to-end communicator tests.
 
@@ -50,7 +49,7 @@ BASE_ID_RESPONSE_FRAME = bytes([
 TIMEOUT = 3
 
 
-class FakeSerialModule(object):
+class FakeSerialModule:
     ''' The "radio module" end of the pty: writes frames to the communicator, reads frames it sends. '''
 
     def __init__(self, fd):

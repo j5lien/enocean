@@ -1,16 +1,15 @@
-# -*- encoding: utf-8 -*-
-from __future__ import print_function, unicode_literals, division, absolute_import
-import os
 import logging
+import os
 from collections import OrderedDict
 from xml.etree import ElementTree
 
 import enocean.utils
+
 # Left as a helper
 from enocean.protocol.constants import RORG  # noqa: F401
 
 
-class EEP(object):
+class EEP:
     logger = logging.getLogger('enocean.protocol.eep')
 
     def __init__(self):
@@ -22,7 +21,7 @@ class EEP(object):
             self.xml_root = ElementTree.parse(eep_path).getroot()
             self.init_ok = True
             self.__load_xml()
-        except (IOError, ElementTree.ParseError):
+        except (OSError, ElementTree.ParseError):
             # Impossible to test with the current structure?
             # To be honest, as the XML is included with the library,
             # there should be no possibility of ever reaching this...

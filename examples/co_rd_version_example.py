@@ -1,5 +1,4 @@
 #!/usr/bin/env python
-# -*- encoding: utf-8 -*-
 
 """
 Example on getting the information about the EnOcean controller.
@@ -10,18 +9,15 @@ The command used here is specified as 1.10.5 Code 03: CO_RD_VERSION
 in the ESP3 document.
 """
 
-from enocean.consolelogger import init_logging
-from enocean.communicators.serialcommunicator import SerialCommunicator
-from enocean.protocol.packet import Packet
-from enocean.protocol.constants import PACKET
-from enocean import utils
-import traceback
+import queue
 import sys
+import traceback
 
-try:
-    import queue
-except ImportError:
-    import Queue as queue
+from enocean import utils
+from enocean.communicators.serialcommunicator import SerialCommunicator
+from enocean.consolelogger import init_logging
+from enocean.protocol.constants import PACKET
+from enocean.protocol.packet import Packet
 
 init_logging()
 """
@@ -29,7 +25,7 @@ init_logging()
 To prevent running the app as root, change the access permissions:
 'sudo chmod 777 /dev/ttyUSB0'
 """
-communicator = SerialCommunicator(port=u'/dev/ttyUSB0', callback=None)
+communicator = SerialCommunicator(port='/dev/ttyUSB0', callback=None)
 packet = Packet(PACKET.COMMON_COMMAND, [0x03])
 
 communicator.daemon = True

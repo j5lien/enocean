@@ -1,4 +1,3 @@
-# -*- encoding: utf-8 -*-
 '''
 Data-driven tests over every profile defined in EEP.xml.
 
@@ -28,7 +27,7 @@ CREATABLE_RORGS = (RORG.RPS, RORG.BS1, RORG.BS4, RORG.VLD)
 FIXED_WIDTH_BITS = {RORG.RPS: 8, RORG.BS1: 8, RORG.BS4: 32}
 
 
-class Variant(object):
+class Variant:
     ''' One <data> block of a profile: what a given telegram (per direction/command) looks like. '''
 
     def __init__(self, rorg, func, type_, profile, data):

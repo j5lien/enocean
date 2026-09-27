@@ -1,15 +1,10 @@
-# -*- encoding: utf-8 -*-
-from __future__ import print_function, unicode_literals, division, absolute_import
-import logging
 import datetime
-
+import logging
+import queue
 import threading
-try:
-    import queue
-except ImportError:
-    import Queue as queue
-from enocean.protocol.packet import Packet, UTETeachInPacket
+
 from enocean.protocol.constants import PACKET, PARSE_RESULT, RETURN_CODE
+from enocean.protocol.packet import Packet, UTETeachInPacket
 
 
 class Communicator(threading.Thread):
@@ -20,7 +15,7 @@ class Communicator(threading.Thread):
     logger = logging.getLogger('enocean.communicators.Communicator')
 
     def __init__(self, callback=None, teach_in=True):
-        super(Communicator, self).__init__()
+        super().__init__()
         # Create an event to stop the thread
         self._stop_flag = threading.Event()
         # Input buffer
