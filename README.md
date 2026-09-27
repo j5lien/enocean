@@ -10,6 +10,8 @@ Profiles (EEP): the 270 profiles of the official EnOcean Alliance specification 
 [`enocean/protocol/profiles/`](enocean/protocol/profiles/) is generated (each profile is loaded on first use). See [SUPPORTED_PROFILES.md](SUPPORTED_PROFILES.md)
 for the full list, or `EEP().describe('D2-01-12')` from code.
 
+**Documentation: <https://j5lien.github.io/enocean/>** (getting started, concepts, guides, API reference, migration).
+
 This is a maintained fork of [kipe/enocean](https://github.com/kipe/enocean), which is no longer maintained.
 
 ## Installation
@@ -182,7 +184,8 @@ make test         # run the tests (no hardware needed: a pseudo-terminal stands 
 make test-linux   # same, in a Linux Docker container (PY=3.10 to pick the Python version)
 make test-hardware  # against a real EnOcean stick configured in .env (see .env.example), local only
 make cov          # tests with coverage
-make lint         # ruff check + format check
+make lint         # ruff (including docstrings) + format check + mypy
+make docs         # serve the documentation locally
 make format       # ruff format
 make eep          # regenerate the profiles from the official specification (downloaded) and tools/eep_additions.xml
 ```

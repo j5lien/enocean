@@ -29,6 +29,8 @@ jobs:
           uv run --locked ruff format --check
       - name: Mypy
         run: uv run --locked mypy
+      - name: Build the documentation
+        run: uv run --locked --group docs mkdocs build --strict
       - name: Check the profiles are generated from the official specification
         run: |
           uv run --locked python tools/generate_eep.py

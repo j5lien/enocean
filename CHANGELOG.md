@@ -38,6 +38,8 @@ Towards 2.0.0: fixes and removal of deprecated APIs, before reworking the public
 
 ### Added
 
+- Documentation site (<https://j5lien.github.io/enocean/>): getting started, concepts, guides, API reference generated
+  from the docstrings (now on the whole public API), migration guide; its examples are run by the tests.
 - Profiles are loaded on first use (one file per profile under `enocean/protocol/profiles/`): building `EEP()`
   reads a small index (0.6 ms instead of 16 ms for the single 1.5 MB file), and importing `enocean` takes about half
   the time (`__version__` is resolved on demand).

@@ -27,3 +27,4 @@ htmlcov/
 .env
 
 .cache/
+site/
