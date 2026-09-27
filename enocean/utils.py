@@ -13,9 +13,9 @@ def combine_hex(data):
 
 def to_bitarray(data, width=8):
     """Convert data (list of integers, bytearray or integer) to bitarray"""
-    if isinstance(data, list) or isinstance(data, bytearray):
+    if isinstance(data, (list, bytearray)):
         data = combine_hex(data)
-    return [True if digit == '1' else False for digit in bin(data)[2:].zfill(width)]
+    return [digit == '1' for digit in bin(data)[2:].zfill(width)]
 
 
 def from_bitarray(data):

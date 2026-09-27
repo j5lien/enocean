@@ -89,7 +89,7 @@ class Communicator(threading.Thread):
         # Loop over 10 times, to make sure we catch the response.
         # Thanks to timeout, shouldn't take more than a second.
         # Unfortunately, all other messages received during this time are ignored.
-        for i in range(0, 10):
+        for _ in range(10):
             try:
                 packet = self.receive.get(block=True, timeout=0.1)
                 # We're only interested in responses to the request in question.

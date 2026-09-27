@@ -18,7 +18,7 @@ make test          # uv run pytest
 make test-linux    # same, in a Linux Docker container (PY=3.10 to pick the version)
 make test-timing   # WITH_TIMINGS=1, enables @timing-decorated rounds/limits
 make cov           # pytest with coverage
-make lint          # ruff check (config in pyproject.toml)
+make lint          # ruff check + ruff format --check, whole project (config in pyproject.toml)
 make format        # ruff format
 ```
 
@@ -36,7 +36,9 @@ the radio on the pty master side), and TCP tests use real local sockets. Fixture
 `enocean/communicators/tests/conftest.py`; the `running` fixture guarantees threads are stopped and joined.
 Serial e2e tests are skipped on Windows (no pty). An unhandled exception in a communicator thread fails the test
 (`filterwarnings` in `pyproject.toml`).
-Lint rules (ruff: E/W/F/C90, line length 120, max complexity 15) live in `pyproject.toml`.
+Lint rules (ruff: E/W/F/C90/I/UP/B/SIM, line length 120, max complexity 15) and formatting (`ruff format`, single
+quotes) are configured in `pyproject.toml`. Multi-line ESP3 frame literals are wrapped in `# fmt: off` / `# fmt: on`
+to keep their sync/header/CRC/data/optional layout; do the same for new ones.
 
 After changing `EEP.xml`:
 ```bash

@@ -125,7 +125,7 @@ class EEP:
             source.get('shortcut'): {
                 'description': source.get('description'),
                 'unit': source.get('unit', ''),
-                'value': True if raw_value else False,
+                'value': bool(raw_value),
                 'raw_value': raw_value,
             }
         }
@@ -175,15 +175,15 @@ class EEP:
             self.logger.warning('EEP.xml not loaded!')
             return None
 
-        if eep_rorg not in self.telegrams.keys():
+        if eep_rorg not in self.telegrams:
             self.logger.warning('Cannot find rorg %s in EEP!', hex(eep_rorg))
             return None
 
-        if rorg_func not in self.telegrams[eep_rorg].keys():
+        if rorg_func not in self.telegrams[eep_rorg]:
             self.logger.warning('Cannot find rorg %s func %s in EEP!', hex(eep_rorg), hex(rorg_func))
             return None
 
-        if rorg_type not in self.telegrams[eep_rorg][rorg_func].keys():
+        if rorg_type not in self.telegrams[eep_rorg][rorg_func]:
             self.logger.warning(
                 'Cannot find rorg %s func %s type %s in EEP!', hex(eep_rorg), hex(rorg_func), hex(rorg_type)
             )

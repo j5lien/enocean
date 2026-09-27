@@ -162,7 +162,7 @@ def test_value_fields_have_usable_range(variant):
         if tag.tag == 'value':
             rng_min, rng_max, scl_min, scl_max = range_and_scale(tag)
             assert rng_min != rng_max and scl_min != scl_max, tag.get('shortcut')
-            assert 0 <= min(rng_min, rng_max) and max(rng_min, rng_max) < 2 ** int(tag.get('size')), (
+            assert min(rng_min, rng_max) >= 0 and max(rng_min, rng_max) < 2 ** int(tag.get('size')), (
                 '%s: range %g..%g does not fit in %s bits' % (tag.get('shortcut'), rng_min, rng_max, tag.get('size'))
             )
 

@@ -112,7 +112,7 @@ def test_communicator_parse_terminates_on_any_stream(chunks):
 def test_valid_frames_survive_arbitrary_chunking(frames, data):
     stream = b''.join(frames)
     cuts = sorted(data.draw(st.lists(st.integers(0, len(stream)), max_size=10)))
-    chunks = [stream[a:b] for a, b in zip([0] + cuts, cuts + [len(stream)])]
+    chunks = [stream[a:b] for a, b in zip([0] + cuts, cuts + [len(stream)], strict=True)]
 
     packets = parse_stream(chunks)
 
