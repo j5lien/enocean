@@ -3,6 +3,7 @@ End-to-end tests for TCPCommunicator: the real communicator thread listens on a 
 clients push ESP3 frames to it over real sockets, as examples/serial_to_tcp.py does.
 """
 
+import queue
 import socket
 import time
 
@@ -70,3 +71,28 @@ def test_send_to_tcp_socket_helper(free_tcp_port, running):
     send_to_tcp_socket('127.0.0.1', free_tcp_port, packet)
 
     assert com.receive.get(timeout=TIMEOUT).sender_hex == '01:81:B7:44'
+
+
+def test_frames_are_delivered_while_client_stays_connected(free_tcp_port, running):
+    com = running(TCPCommunicator(host='127.0.0.1', port=free_tcp_port))
+
+    client = connect(free_tcp_port)
+    try:
+        for _ in range(3):
+            client.sendall(RADIO_FRAME)
+            # Delivered as it arrives, not when the client disconnects or goes idle
+            assert com.receive.get(timeout=0.4).sender_hex == '01:81:B7:44'
+    finally:
+        client.close()
+
+
+def test_callback_receives_packets(free_tcp_port, running):
+    received = queue.Queue()
+    com = running(TCPCommunicator(host='127.0.0.1', port=free_tcp_port, callback=received.put))
+
+    client = connect(free_tcp_port)
+    client.sendall(RADIO_FRAME)
+    client.close()
+
+    assert received.get(timeout=TIMEOUT).sender_hex == '01:81:B7:44'
+    assert com.receive.empty()

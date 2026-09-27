@@ -5,12 +5,15 @@ from enocean.communicators.communicator import Communicator
 
 
 class TCPCommunicator(Communicator):
-    """Socket communicator class for EnOcean radio"""
+    """
+    TCP server receiving ESP3 packets from clients, e.g. a serial-to-TCP bridge (see examples/serial_to_tcp.py).
+    Receive-only: packets passed to send() (including UTE teach-in responses) are not transmitted anywhere.
+    """
 
     logger = logging.getLogger('enocean.communicators.TCPCommunicator')
 
-    def __init__(self, host='', port=9637):
-        super().__init__()
+    def __init__(self, host='', port=9637, callback=None, teach_in=True):
+        super().__init__(callback, teach_in)
         self.host = host
         self.port = port
 
@@ -28,7 +31,7 @@ class TCPCommunicator(Communicator):
                 continue
             self.logger.debug('Client "%s" connected', addr)
             client.settimeout(0.5)
-            while True and not self._stop_flag.is_set():
+            while not self._stop_flag.is_set():
                 try:
                     data = client.recv(2048)
                 except TimeoutError:
@@ -36,7 +39,7 @@ class TCPCommunicator(Communicator):
                 if not data:
                     break
                 self._buffer.extend(bytearray(data))
-            self.parse()
+                self.parse()
             client.close()
             self.logger.debug('Client disconnected')
         sock.close()

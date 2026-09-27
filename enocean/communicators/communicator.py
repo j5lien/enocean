@@ -28,6 +28,11 @@ class Communicator(threading.Thread):
         self.__callback = callback
         # Internal variable for the Base ID of the module.
         self._base_id = None
+        # Set while a CO_RD_IDBASE request is waiting for its response
+        self._base_id_requested = False
+        self._base_id_received = threading.Event()
+        # UTE teach-in requests waiting for the Base ID before they can be answered
+        self._pending_teach_ins = []
         # Should new messages be learned automatically? Defaults to True.
         # TODO: Not sure if we should use CO_WR_LEARNMODE??
         self.teach_in = teach_in
@@ -66,10 +71,16 @@ class Communicator(threading.Thread):
             if status == PARSE_RESULT.OK and packet:
                 packet.received = datetime.datetime.now()
 
-                if isinstance(packet, UTETeachInPacket) and self.base_id != packet.sender and self.teach_in:
-                    response_packet = packet.create_response_packet(self.base_id)
-                    self.logger.info('Sending response to UTE teach-in.')
-                    self.send(response_packet)
+                if self._base_id_requested and self._is_base_id_response(packet):
+                    self._base_id = packet.response_data
+                    self._base_id_requested = False
+                    self._base_id_received.set()
+                    self._answer_pending_teach_ins()
+
+                if isinstance(packet, UTETeachInPacket) and self.teach_in:
+                    self._pending_teach_ins.append(packet)
+                    if self.base_id is not None:
+                        self._answer_pending_teach_ins()
 
                 if self.__callback is None:
                     self.receive.put(packet)
@@ -77,36 +88,43 @@ class Communicator(threading.Thread):
                     self.__callback(packet)
                 self.logger.debug(packet)
 
+    @staticmethod
+    def _is_base_id_response(packet):
+        return (
+            packet.packet_type == PACKET.RESPONSE
+            and packet.response == RETURN_CODE.OK
+            and len(packet.response_data) == 4
+        )
+
+    def _answer_pending_teach_ins(self):
+        while self._pending_teach_ins:
+            packet = self._pending_teach_ins.pop(0)
+            if packet.sender == self._base_id:
+                continue
+            self.logger.info('Sending response to UTE teach-in.')
+            self.send(packet.create_response_packet(self._base_id))
+
+    def _request_base_id(self):
+        if not self._base_id_requested:
+            self._base_id_requested = True
+            self._base_id_received.clear()
+            # Send COMMON_COMMAND 0x08, CO_RD_IDBASE request to the module
+            self.send(Packet(PACKET.COMMON_COMMAND, data=[0x08]))
+
     @property
     def base_id(self):
-        """Fetches Base ID from the transmitter, if required. Otherwise returns the currently set Base ID."""
-        # If base id is already set, return it.
+        """
+        Fetches Base ID from the transmitter, if required. Otherwise returns the currently set Base ID.
+        Waits up to a second for the module's response, except from the communicator thread itself, which can't
+        wait for a response only it can read: there the request is sent and None returned until it arrives.
+        """
         if self._base_id is not None:
             return self._base_id
 
-        # Send COMMON_COMMAND 0x08, CO_RD_IDBASE request to the module
-        self.send(Packet(PACKET.COMMON_COMMAND, data=[0x08]))
-        # Loop over 10 times, to make sure we catch the response.
-        # Thanks to timeout, shouldn't take more than a second.
-        # Unfortunately, all other messages received during this time are ignored.
-        for _ in range(10):
-            try:
-                packet = self.receive.get(block=True, timeout=0.1)
-                # We're only interested in responses to the request in question.
-                if (
-                    packet.packet_type == PACKET.RESPONSE
-                    and packet.response == RETURN_CODE.OK
-                    and len(packet.response_data) == 4
-                ):  # noqa: E501
-                    # Base ID is set in the response data.
-                    self._base_id = packet.response_data
-                    # Put packet back to the Queue, so the user can also react to it if required...
-                    self.receive.put(packet)
-                    break
-                # Put other packets back to the Queue.
-                self.receive.put(packet)
-            except queue.Empty:
-                continue
+        self._request_base_id()
+        if threading.current_thread() is not self and not self._base_id_received.wait(1):
+            self.logger.warning('No response from the module to the Base ID request.')
+            self._base_id_requested = False
         # Return the current Base ID (might be None).
         return self._base_id
 

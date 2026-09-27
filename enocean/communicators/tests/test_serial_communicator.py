@@ -193,3 +193,62 @@ def test_common_command_packet_roundtrip(pty_port, running):
     written = module.read_packet()
     assert written.packet_type == PACKET.COMMON_COMMAND
     assert written.data == [0x03]
+
+
+def answer_base_id_request(module):
+    """Plays the module's side of CO_RD_IDBASE in the background."""
+
+    def respond():
+        request = module.read_packet()
+        assert request.packet_type == PACKET.COMMON_COMMAND and request.data == [0x08]
+        module.write(BASE_ID_RESPONSE_FRAME)
+
+    responder = threading.Thread(target=respond, daemon=True)
+    responder.start()
+    return responder
+
+
+def test_base_id_is_fetched_in_callback_mode(pty_port, running):
+    module, port = pty_port
+    received = queue.Queue()
+    com = running(SerialCommunicator(port=port, callback=received.put))
+    answer_base_id_request(module)
+
+    assert com.base_id == [0xFF, 0x87, 0xCA, 0x00]
+    # The response is still delivered to the callback
+    assert received.get(timeout=TIMEOUT).packet_type == PACKET.RESPONSE
+
+
+def test_base_id_fetch_keeps_other_packets_in_order(pty_port, running):
+    module, port = pty_port
+    com = running(SerialCommunicator(port=port))
+
+    def respond():
+        module.read_packet()
+        module.write(RADIO_FRAME + RADIO_FRAME)
+        time.sleep(0.2)
+        module.write(BASE_ID_RESPONSE_FRAME)
+
+    threading.Thread(target=respond, daemon=True).start()
+
+    assert com.base_id == [0xFF, 0x87, 0xCA, 0x00]
+    types = [com.receive.get(timeout=TIMEOUT).packet_type for _ in range(3)]
+    assert types == [PACKET.RADIO_ERP1, PACKET.RADIO_ERP1, PACKET.RESPONSE]
+
+
+def test_ute_teach_in_fetches_unknown_base_id_then_answers(pty_port, running):
+    module, port = pty_port
+    com = running(SerialCommunicator(port=port))
+
+    module.write(UTE_TEACH_IN_FRAME)
+    # The communicator doesn't know its base ID yet: it must ask the module first...
+    request = module.read_packet()
+    assert request.packet_type == PACKET.COMMON_COMMAND and request.data == [0x08]
+    module.write(BASE_ID_RESPONSE_FRAME)
+
+    # ...then answer the teach-in from that base ID, without losing the teach-in packet
+    response = module.read_packet()
+    assert response.rorg == RORG.UTE
+    assert response.sender_hex == 'FF:87:CA:00'
+    assert response.destination_hex == '01:94:E3:B9'
+    assert isinstance(com.receive.get(timeout=TIMEOUT), UTETeachInPacket)
