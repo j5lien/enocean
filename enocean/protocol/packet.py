@@ -39,6 +39,7 @@ class Packet:
         self.rorg_type: int | None = None
         self.rorg_manufacturer: int | None = None
 
+        # When the packet was parsed from the serial stream (UTC, timezone-aware); None for packets built locally
         self.received: datetime.datetime | None = None
         self.data = self._int_list(data, 'data')
         self.optional = self._int_list(optional, 'optional')
@@ -197,6 +198,8 @@ class Packet:
             if on_error:
                 on_error(MALFORMED_PACKET)
 
+        packet.received = datetime.datetime.now(datetime.timezone.utc)
+
         return PARSE_RESULT.OK, buf, packet
 
     @staticmethod
@@ -290,6 +293,7 @@ class Packet:
         # For example, stuff like RadioPacket.learn should be set.
         parsed_packet = Packet.parse_msg(packet.build())[2]
         assert parsed_packet is not None, 'a packet we just built must parse'
+        parsed_packet.received = None
         parsed_packet.rorg = rorg
         parsed_packet.parse_eep(rorg_func, rorg_type, direction, command)
         return parsed_packet
