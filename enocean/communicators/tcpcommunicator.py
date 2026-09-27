@@ -43,7 +43,11 @@ class TCPCommunicator(Communicator):
                 if not data:
                     break
                 self._buffer.extend(bytearray(data))
-                self.parse()
+                try:
+                    self.parse()
+                except Exception:
+                    # Most likely raised by the user's callback: keep serving, but with the full traceback
+                    self.logger.exception('Error while processing received packets')
             client.close()
             self.logger.debug('Client disconnected')
         sock.close()

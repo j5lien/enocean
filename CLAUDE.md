@@ -55,6 +55,16 @@ decoding of fixed bit patterns against `eep_snapshot.json`: review the snapshot 
 
 There's no build step; it's a pure-Python package (`uv build` produces sdist/wheel).
 
+## Logging conventions
+
+The `enocean` logger has a `NullHandler`: the library is silent unless the application configures logging
+(`enocean.consolelogger.init_logging()`, optionally `json_format=True`). Levels: DEBUG for per-packet traffic and
+expected radio noise (header CRC errors while resynchronizing), INFO for lifecycle events (started/stopped, base ID,
+teach-in answered), WARNING for dropped or unusable data (data CRC error, malformed packet, unknown profile), ERROR
+for transport failures, `logger.exception` for errors raised while processing packets (e.g. in user callbacks). Pass
+lazy `%s` args, never pre-formatted strings, and `extra=packet_log_fields(packet)` on packet-related records so
+structured handlers get `packet_type`/`rorg`/`sender`/`dbm`.
+
 ## Releasing
 
 Not published to PyPI. Update `CHANGELOG.md` (new `## [x.y.z] - date` section) and `version` in `pyproject.toml`,
