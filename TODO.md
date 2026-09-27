@@ -37,7 +37,9 @@ Dépréciations à retirer (changements incompatibles : version 2.0, avec guide 
       `packet.eep_id` et `packet.command`
 - [x] Émission haut niveau : `SwitchActuator` (D2-01) et `BlindActuator` (D2-05), depuis le base ID ou un autre ID de
       la clé
-- [ ] Teach-in : appairer la clé à un actionneur (requête et réponse UTE), au lieu de forger les octets à la main
+- [x] Teach-in : `communicator.learn()` (fenêtre d'apprentissage), réponses correctes aux demandes de suppression et aux
+      profils inconnus, registre mis à jour
+- [ ] Test matériel du teach-in avec un vrai actionneur (appairage réel de la clé : à faire avec un actionneur de test)
 - [x] API publique déclarée : `from enocean import SerialCommunicator, RadioPacket, RORG`, `__all__`,
       `__version__` ; `RadioPacket.dbm` (`None` si non rapporté) remplace `dBm`, déprécié
 - [x] Introspection des profils : `EEP().profiles()`, `EEP().describe('D2-01-12')`

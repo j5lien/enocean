@@ -78,6 +78,18 @@ print(packet.to_dict())  # JSON-serializable, e.g. to index or publish it
 Profiles with several commands (e.g. D2-01-12) are decoded with the command the telegram carries. To see what a
 profile contains: `EEP().describe('D2-01-12')`.
 
+Teach the module in to an actuator (UTE): open a learn window, then put the actuator in learn mode (e.g. press its
+button); it announces its profile and learns the module's ID:
+
+```python
+communicator = SerialCommunicator(port='/dev/ttyUSB0', teach_in=False)  # don't pair with anyone outside learn()
+communicator.start()
+devices = communicator.learn(timeout=30, max_devices=1)  # added to communicator.devices
+```
+
+With `teach_in=True` (the default), teach-in requests are answered at any time. Deletion requests (and repeated
+requests from devices already known) are answered as deletions, and unknown profiles are refused.
+
 Control actuators the module is taught in to:
 
 ```python
