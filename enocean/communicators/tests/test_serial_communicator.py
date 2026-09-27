@@ -282,3 +282,26 @@ def test_health(pty_port, running):
     health = com.health()
     assert not health.healthy
     assert set(health.problems) == {'communicator thread is not running', 'transport is not ready'}
+
+
+def test_prometheus_metrics_of_a_running_communicator(pty_port, running):
+    from prometheus_client import CollectorRegistry
+
+    from enocean.prometheus import register
+
+    module, port = pty_port
+    com = running(SerialCommunicator(port=port))
+    registry = CollectorRegistry()
+    register(com, registry=registry, max_silence=60)
+    answer_base_id_request(module)
+
+    assert com.base_id == [0xFF, 0x87, 0xCA, 0x00]
+    com.send(Packet(PACKET.COMMON_COMMAND, data=[0x03]))
+    module.read_packet()
+
+    value = registry.get_sample_value
+    assert value('enocean_up') == 1
+    assert value('enocean_healthy') == 1
+    assert value('enocean_base_id_known') == 1
+    assert 0 <= value('enocean_base_id_fetch_seconds') < 1
+    assert wait_until(lambda: value('enocean_packets_sent_total', {'packet_type': 'common_command', 'rorg': ''}) == 2)

@@ -65,6 +65,9 @@ Transports must push received bytes through `Communicator._feed()` so they are c
 `communicator.health(max_silence=None)` returns a `Health` (running, transport ready, base ID known, queue sizes,
 seconds since last packet, `problems`/`healthy`); transports set `self._transport_ready` while their port/socket is
 usable.
+`enocean/prometheus.py` (optional extra `enocean[prometheus]`) is a custom `prometheus_client` collector reading
+stats/health at scrape time; several communicators go in one collector (`communicator` label), since separate
+collectors would register duplicate metric names. Keep `prometheus_client` imports confined to that module.
 
 ## Logging conventions
 
