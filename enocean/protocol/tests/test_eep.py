@@ -1,7 +1,7 @@
 import pytest
 
 from enocean.protocol.constants import RORG
-from enocean.protocol.eep import EEP
+from enocean.protocol.eep import EEP, EEPId
 from enocean.protocol.packet import Packet, RadioPacket
 
 
@@ -291,3 +291,38 @@ def test_a5_04_02_temperature_scale():
         packet = RadioPacket(1, [RORG.BS4, 0x00, 0x64, raw, 0x0A, 0x01, 0x02, 0x03, 0x04, 0x00], [])
         packet.parse_eep(0x04, 0x02)
         assert packet.parsed['TMP']['value'] == pytest.approx(expected)
+
+
+def test_profiles_lists_every_profile():
+    eep = EEP()
+    profiles = list(eep.profiles())
+    assert len(profiles) == sum(len(types) for functions in eep.telegrams.values() for types in functions.values())
+    assert EEPId(0xD2, 0x01, 0x12) in profiles
+
+
+def test_describe_profile_variants():
+    variants = EEP().describe('D2-01-12')
+
+    set_output = next(variant for variant in variants if variant.command == 1)
+    assert set_output.eep_id == EEPId(0xD2, 0x01, 0x12)
+    assert set_output.description == 'Electronic switch with Local Control'
+    assert set_output.length == 3
+    assert [f.shortcut for f in set_output.fields] == ['CMD', 'DV', 'IO', 'OV']
+    output_value = set_output.field('OV')
+    assert output_value.kind == 'enum' and (output_value.offset, output_value.size) == (17, 7)
+    assert output_value.items[0] == 'Output value 0% or OFF'
+    assert output_value.ranges[0] == (1, 100, 'Output value {value}% or ON')
+
+
+def test_describe_value_and_status_fields():
+    temperature = EEP().describe(EEPId(0xA5, 0x02, 0x05))[0].field('TMP')
+    assert (temperature.kind, temperature.unit) == ('value', '°C')
+    assert temperature.raw_range == (255, 0) and temperature.scale == (0, 40)
+
+    rocker = EEP().describe('F6-02-02')[0]
+    assert rocker.field('T21').kind == 'status'
+
+
+def test_describe_unknown_profile():
+    with pytest.raises(KeyError):
+        EEP().describe('D2-7F-7F')
