@@ -33,9 +33,9 @@ CONTROLLER = [0xFF, 0xF5, 0xB4, 0x80]  # another gateway commanding the actuator
 @pytest.mark.parametrize(
     ('payload', 'status', 'expected'),
     [
-        ([0x10], 0x30, {'R1': 'Button AI', 'EB': 'pressed', 'SA': 'No 2nd action', 'T21': True, 'NU': True}),
-        ([0x30], 0x30, {'R1': 'Button AO', 'EB': 'pressed', 'SA': 'No 2nd action', 'T21': True, 'NU': True}),
-        ([0x00], 0x20, {'EB': 'released', 'T21': True, 'NU': False}),
+        ([0x10], 0x30, {'R1': 0, 'EB': 1, 'SA': 0, 'T21': 1, 'NU': 1}),  # Button AI (I) pressed
+        ([0x30], 0x30, {'R1': 1, 'EB': 1, 'SA': 0, 'T21': 1, 'NU': 1}),  # Button A0 (O) pressed
+        ([0x00], 0x20, {'R1': 0, 'EB': 0, 'T21': 1, 'NU': 0}),  # released: the NU=0 variant, "no button"
     ],
     ids=['I-pressed', 'O-pressed', 'released'],
 )
@@ -44,12 +44,15 @@ def test_ptm210_wall_switch(payload, status, expected):
 
     assert packet.sender_hex == '00:37:7E:06'
     assert packet.dbm == -58
-    assert values.items() >= expected.items()
+    assert {shortcut: packet.parsed[shortcut]['raw_value'] for shortcut in expected} == expected
+    assert values['EB'] == ('pressed' if expected['EB'] else 'released')
+    if expected['NU']:
+        assert values['R1'].startswith(('Button AI:', 'Button A0:')[expected['R1']])
 
 
 @pytest.mark.parametrize(
     ('payload', 'output'),
-    [([0x04, 0x61, 0xE4], 'Output value 100% or ON'), ([0x04, 0x61, 0x80], 'Output value 0% or OFF')],
+    [([0x04, 0x61, 0xE4], 'Output value 1% to 100% or ON: 100'), ([0x04, 0x61, 0x80], 'Output value 0% or OFF')],
     ids=['on', 'off'],
 )
 def test_d2_01_12_actuator_status(payload, output):
@@ -57,8 +60,8 @@ def test_d2_01_12_actuator_status(payload, output):
     packet, values = decode(radio_frame(RORG.VLD, payload, OFFICE_LIGHT, 0x00, -73), 0x01, 0x12, command=4)
 
     assert packet.sender_hex == '05:99:77:AF'
-    assert values['CMD'] == 'Command ID 4'
-    assert values['IO'] == 'Output channel 1 (to load)'
+    assert packet.command == 4
+    assert values['IO'] == 'Output channel (to load): 1'
     assert values['OV'] == output
     assert values['LC'] == 'Local control enabled'
 
@@ -68,10 +71,10 @@ def test_d2_01_12_actuator_set_output():
     _, values = decode(radio_frame(RORG.VLD, [0x01, 0x01, 0x64], CONTROLLER, 0x00, -68), 0x01, 0x12, command=1)
 
     assert values == {
-        'CMD': 'Command ID 1',
+        'CMD': 'ID 01',
         'DV': 'Switch to new output value',
-        'IO': 'Output channel 1 (to load)',
-        'OV': 'Output value 100% or ON',
+        'IO': 'Output channel (to load): 1',
+        'OV': 'Output value 1% to 100% or ON: 100',
     }
 
 
@@ -84,8 +87,8 @@ def test_d2_01_12_same_command_we_would_send():
 @pytest.mark.parametrize(
     ('payload', 'sender', 'expected'),
     [
-        ([0x01, 0x01, 0x64], CONTROLLER, {'CMD': 'Command ID 1', 'DV': 'Switch to new output value'}),
-        ([0x04, 0x61, 0xE4], OFFICE_LIGHT, {'CMD': 'Command ID 4', 'LC': 'Local control enabled'}),
+        ([0x01, 0x01, 0x64], CONTROLLER, {'CMD': 'ID 01', 'DV': 'Switch to new output value'}),
+        ([0x04, 0x61, 0xE4], OFFICE_LIGHT, {'CMD': 'ID 04', 'LC': 'Local control enabled'}),
     ],
     ids=['set-output', 'status'],
 )
@@ -94,4 +97,4 @@ def test_d2_01_12_command_is_detected(payload, sender, expected):
     _, values = decode(radio_frame(RORG.VLD, payload, sender, 0x00, -70), 0x01, 0x12)
 
     assert values.items() >= expected.items()
-    assert values['OV'] == 'Output value 100% or ON'
+    assert values['OV'] == 'Output value 1% to 100% or ON: 100'

@@ -17,7 +17,7 @@ def test_temperature():
         0x75
     ]))
     # fmt: on
-    assert packet.parse_eep(0x02, 0x05) == ['TMP']
+    assert packet.parse_eep(0x02, 0x05) == ['LRNB', 'TMP']
     assert round(packet.parsed['TMP']['value'], 1) == 26.7
     assert packet.parsed['TMP']['raw_value'] == 85
     assert packet.learn is False
@@ -44,7 +44,7 @@ def test_magnetic_switch():
         0x53
     ]))
     # fmt: on
-    assert packet.parse_eep(0x00, 0x01) == ['CO']
+    assert packet.parse_eep(0x00, 0x01) == ['CO', 'LRN']
     assert packet.parsed['CO']['value'] == 'open'
     assert packet.parsed['CO']['raw_value'] == 0
     assert packet.status == 0x00
@@ -60,7 +60,7 @@ def test_magnetic_switch():
         0xC7
     ]))
     # fmt: on
-    assert packet.parse_eep(0x00, 0x01) == ['CO']
+    assert packet.parse_eep(0x00, 0x01) == ['CO', 'LRN']
     assert packet.parsed['CO']['value'] == 'closed'
     assert packet.parsed['CO']['raw_value'] == 1
     assert packet.learn is False
@@ -82,7 +82,7 @@ def test_switch():
     assert packet.parse_eep(0x02, 0x02) == ['R1', 'EB', 'R2', 'SA', 'T21', 'NU']
     assert packet.parsed['SA']['value'] == 'No 2nd action'
     assert packet.parsed['EB']['value'] == 'pressed'
-    assert packet.parsed['R1']['value'] == 'Button BI'
+    assert packet.parsed['R1']['value'].startswith('Button BI:')
     assert packet.parsed['T21']['value'] is True
     assert packet.parsed['NU']['value'] is True
     assert packet.learn is True
@@ -99,8 +99,9 @@ def test_switch():
         0x03
     ]))
     # fmt: on
-    assert packet.parse_eep(0x02, 0x02) == ['R1', 'EB', 'R2', 'SA', 'T21', 'NU']
-    assert packet.parsed['SA']['value'] == 'No 2nd action'
+    # NU=0: the variant for released buttons / several buttons pressed
+    assert packet.parse_eep(0x02, 0x02) == ['R1', 'EB', 'T21', 'NU']
+    assert packet.parsed['R1']['value'] == 'no button'
     assert packet.parsed['EB']['value'] == 'released'
     assert packet.parsed['T21']['value'] is True
     assert packet.parsed['NU']['value'] is False
@@ -140,7 +141,7 @@ def test_eep_remaining():
         0x53
     ]))
     # fmt: on
-    assert packet.parse_eep(0x00, 0x01) == ['CO']
+    assert packet.parse_eep(0x00, 0x01) == ['CO', 'LRN']
 
     # Temperature-example
     # fmt: off
@@ -156,7 +157,7 @@ def test_eep_remaining():
     # If this fails, the data is retained from the last Packet parsing!
     assert packet.parse_eep(0x00, 0x01) == []
     # Once we have parse with the correct func and type, this should pass.
-    assert packet.parse_eep(0x02, 0x05) == ['TMP']
+    assert packet.parse_eep(0x02, 0x05) == ['LRNB', 'TMP']
 
 
 def test_eep_direction():
@@ -170,9 +171,21 @@ def test_eep_direction():
         0x43
     ]))
     # fmt: on
-    assert packet.parse_eep(0x20, 0x01, 1) == ['CV', 'SO', 'ENIE', 'ES', 'BCAP', 'CCO', 'FTS', 'DWO', 'ACO', 'TMP']
+    assert packet.parse_eep(0x20, 0x01, 1) == [
+        'LRNB',
+        'CV',
+        'SO',
+        'ENIE',
+        'ES',
+        'BCAP',
+        'CCO',
+        'FTS',
+        'DWO',
+        'ACO',
+        'TMP',
+    ]
     assert packet.parsed['CV']['value'] == 50
-    assert packet.parse_eep(0x20, 0x01, 2) == ['SP', 'TMP', 'RIN', 'LFS', 'VO', 'VC', 'SB', 'SPS', 'SPN', 'RCU']
+    assert packet.parse_eep(0x20, 0x01, 2) == ['LRNB', 'SP', 'TMP', 'RIN', 'LFS', 'VO', 'VC', 'SB', 'SPS', 'SPN', 'RCU']
     assert packet.parsed['SP']['value'] == 50
 
 
@@ -197,13 +210,13 @@ def test_vld():
     assert p.parsed['PF']['value'] == 'Power Failure Detection disabled/not supported'
 
     assert p.parsed['PFD']['raw_value'] == 0
-    assert p.parsed['PFD']['value'] == 'Power Failure Detection not detected/not supported/disabled'
+    assert p.parsed['PFD']['value'] == 'Power Failure not detected/not supported/disabled'
 
     assert p.parsed['IO']['raw_value'] == 0
-    assert p.parsed['IO']['value'] == 'Output channel 0 (to load)'
+    assert p.parsed['IO']['value'] == 'Output channel (to load): 0'
 
     assert p.parsed['OV']['raw_value'] == 100
-    assert p.parsed['OV']['value'] == 'Output value 100% or ON'
+    assert p.parsed['OV']['value'] == 'Output value 1% to 100% or ON: 100'
 
     assert p.parsed['OC']['raw_value'] == 0
     assert p.parsed['OC']['value'] == 'Over current switch off: ready / not supported'
@@ -231,10 +244,10 @@ def test_vld():
     assert p.parsed['PF']['value'] == 'Power Failure Detection disabled/not supported'
 
     assert p.parsed['PFD']['raw_value'] == 0
-    assert p.parsed['PFD']['value'] == 'Power Failure Detection not detected/not supported/disabled'
+    assert p.parsed['PFD']['value'] == 'Power Failure not detected/not supported/disabled'
 
     assert p.parsed['IO']['raw_value'] == 0
-    assert p.parsed['IO']['value'] == 'Output channel 0 (to load)'
+    assert p.parsed['IO']['value'] == 'Output channel (to load): 0'
 
     assert p.parsed['OV']['raw_value'] == 0
     assert p.parsed['OV']['value'] == 'Output value 0% or OFF'
@@ -305,13 +318,13 @@ def test_describe_profile_variants():
 
     set_output = next(variant for variant in variants if variant.command == 1)
     assert set_output.eep_id == EEPId(0xD2, 0x01, 0x12)
-    assert set_output.description == 'Electronic switch with Local Control'
+    assert set_output.description == 'Electronic Switches and Dimmers with Local Control - Type 0x12'
     assert set_output.length == 3
     assert [f.shortcut for f in set_output.fields] == ['CMD', 'DV', 'IO', 'OV']
     output_value = set_output.field('OV')
     assert output_value.kind == 'enum' and (output_value.offset, output_value.size) == (17, 7)
     assert output_value.items[0] == 'Output value 0% or OFF'
-    assert output_value.ranges[0] == (1, 100, 'Output value {value}% or ON')
+    assert output_value.ranges[0] == (1, 100, 'Output value 1% to 100% or ON: {value}')
 
 
 def test_describe_value_and_status_fields():
