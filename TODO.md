@@ -21,7 +21,6 @@ Remise à niveau du fork `j5lien/enocean`. Cocher au fur et à mesure.
 ## Montées de version / modernisation
 
 - [ ] Remonter la version minimale de `pyserial` (`>=3.0`, 2015)
-- [ ] Ajouter le hash du commit `ruff format` (une fois mergé sur `main`) dans `.git-blame-ignore-revs`
 - [ ] Annotations de type + `mypy` en CI + `py.typed`
 - [ ] Remplacer `script-files` (déprécié) par un point d'entrée `[project.scripts]`, vérifier que les exemples
       fonctionnent encore
