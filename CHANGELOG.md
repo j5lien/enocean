@@ -27,6 +27,9 @@ Towards 2.0.0: fixes and removal of deprecated APIs, before reworking the public
 
 ### Added
 
+- `packet.to_dict()`: JSON-serializable view of a packet (hex IDs, enum names that don't raise on unknown values,
+  ISO reception time, EEP and decoded values).
+- `EEPId` (`EEPId.parse('D2-01-12')`), `packet.eep_id` and `packet.command`: the profile and command variant applied.
 - The public API is importable from the package: `from enocean import SerialCommunicator, RadioPacket, RORG`;
   `enocean.__version__`.
 - `SerialCommunicator(teach_in=...)`, like `TCPCommunicator`.
