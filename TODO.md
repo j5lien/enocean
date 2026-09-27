@@ -18,8 +18,7 @@ Bugs :
 - [x] `SerialCommunicator` accepte `teach_in` et son port est obligatoire (défaut `/dev/ttyAMA0`, UART de Raspberry Pi)
 - [x] Setter de `base_id` documenté pour ses vrais usages (ID déjà connu)
 - [x] A5-04-02 : plage brute de la température corrigée (0..250, confirmé par la spec EEP 2.6.7)
-- [ ] `TCPCommunicator` est en réception seule (`send()` sans effet, réponses teach-in non transmises) et ne sert
-      qu'un client à la fois : à revoir si un usage bidirectionnel est souhaité
+- [x] `TCPCommunicator` reste en réception seule (décision : pas d'usage bidirectionnel prévu), documenté comme tel
 
 Dépréciations à retirer (changements incompatibles : version 2.0, avec guide de migration) :
 
