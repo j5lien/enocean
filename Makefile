@@ -1,4 +1,4 @@
-.PHONY: install test test-linux test-timing cov lint format clean
+.PHONY: install test test-linux test-timing cov lint format profiles clean
 
 install:  ## Create .venv and install package + dev deps
 	uv sync
@@ -23,6 +23,9 @@ lint:
 
 format:
 	uv run ruff format enocean
+
+profiles:  ## Regenerate SUPPORTED_PROFILES.md from EEP.xml
+	uv run python generate_supported_profiles.py
 
 clean:
 	rm -rf .venv .pytest_cache .coverage coverage.xml htmlcov build dist *.egg-info
