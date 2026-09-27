@@ -2,9 +2,33 @@ import logging
 import os
 from collections import OrderedDict
 from collections.abc import Iterable, Mapping
+from dataclasses import dataclass
 from typing import Any, TypedDict
 from xml.etree import ElementTree
 from xml.etree.ElementTree import Element
+
+
+@dataclass(frozen=True, order=True)
+class EEPId:
+    """An EnOcean Equipment Profile, e.g. D2-01-12: RORG 0xD2, FUNC 0x01, TYPE 0x12."""
+
+    rorg: int
+    func: int
+    type: int
+
+    @classmethod
+    def parse(cls, value: 'str | EEPId') -> 'EEPId':
+        """Parses 'D2-01-12' (case-insensitive, '-' or ':' separated); EEPId instances are returned unchanged."""
+        if isinstance(value, EEPId):
+            return value
+        parts = value.replace(':', '-').split('-')
+        if len(parts) != 3:
+            raise ValueError('Invalid EEP %r, expected RORG-FUNC-TYPE such as D2-01-12' % value)
+        rorg, func, type_ = (int(part, 16) for part in parts)
+        return cls(rorg, func, type_)
+
+    def __str__(self) -> str:
+        return '%02X-%02X-%02X' % (self.rorg, self.func, self.type)
 
 
 class FieldValue(TypedDict):

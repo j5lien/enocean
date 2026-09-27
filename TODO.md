@@ -34,9 +34,8 @@ Dépréciations à retirer (changements incompatibles : version 2.0, avec guide 
 - [ ] Registre d'appareils : identifiant → EEP (et nom, pièce, métadonnées libres), décodage automatique à la
       réception (`packet.parsed` rempli), profil par défaut par RORG pour les appareils inconnus, liste d'exclusion.
       Remplace les tables `KNOWN_DEVICES` / `NOT_MY_DEVICES` / `EXCLUDED_DEVICES` et les `select_eep()` du sniffer
-- [ ] `packet.to_dict()` sérialisable en JSON : identifiants en hexadécimal, noms de RORG et de type de paquet (sans
-      lever d'exception pour une valeur inconnue : `RORG(x)` plante aujourd'hui), champs décodés, dBm, horodatage ISO.
-      Le sniffer construit ce dictionnaire à la main et lit l'attribut privé `_bit_status`
+- [x] `packet.to_dict()` sérialisable en JSON (noms d'enum sans exception pour les valeurs inconnues), `EEPId`,
+      `packet.eep_id` et `packet.command`
 - [ ] Émission haut niveau vers les actionneurs : D2-01 (sortie d'un canal ou de tous avec `IO=0x1E`), D2-05 (aller à
       une position, stop, demander la position), avec le base ID (ou base ID + décalage) comme émetteur
 - [ ] Teach-in : appairer la clé à un actionneur (requête et réponse UTE), au lieu de forger les octets à la main

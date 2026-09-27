@@ -12,7 +12,7 @@ logging.getLogger(__name__).addHandler(logging.NullHandler())
 
 from enocean.communicators import Communicator, SerialCommunicator, TCPCommunicator  # noqa: E402
 from enocean.protocol.constants import EVENT_CODE, PACKET, PARSE_RESULT, RETURN_CODE, RORG  # noqa: E402
-from enocean.protocol.eep import EEP, FieldValue  # noqa: E402
+from enocean.protocol.eep import EEP, EEPId, FieldValue  # noqa: E402
 from enocean.protocol.packet import (  # noqa: E402
     EventPacket,
     Packet,
@@ -29,6 +29,7 @@ except PackageNotFoundError:  # pragma: no cover - running from a source tree wi
 
 __all__ = [
     'EEP',
+    'EEPId',
     'EVENT_CODE',
     'PACKET',
     'PARSE_RESULT',
