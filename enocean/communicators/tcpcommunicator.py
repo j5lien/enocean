@@ -1,3 +1,5 @@
+"""Communicator receiving ESP3 packets over TCP."""
+
 import logging
 import socket
 from collections.abc import Callable
@@ -11,10 +13,17 @@ if TYPE_CHECKING:
 
 
 class TCPCommunicator(Communicator):
-    """
-    TCP server receiving ESP3 packets from clients, e.g. a serial-to-TCP bridge (see examples/serial_to_tcp.py).
+    """TCP server receiving ESP3 packets from clients, e.g. a serial-to-TCP bridge (see examples/serial_to_tcp.py).
+
     Receive-only: packets passed to send() (including UTE teach-in responses) are not transmitted anywhere. Clients are
     served one at a time.
+
+    Args:
+        host: Address to listen on ('' for all).
+        port: TCP port to listen on.
+        callback: See Communicator.
+        teach_in: See Communicator.
+        devices: See Communicator.
     """
 
     logger = logging.getLogger('enocean.communicators.TCPCommunicator')
@@ -32,6 +41,7 @@ class TCPCommunicator(Communicator):
         self.port = port
 
     def run(self) -> None:
+        """Thread body: accept clients and parse the bytes they send until stopped."""
         self.logger.info('TCPCommunicator started')
         sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         sock.bind((self.host, self.port))

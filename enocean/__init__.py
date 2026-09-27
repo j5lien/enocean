@@ -1,5 +1,4 @@
-"""
-EnOcean serial protocol (ESP3) and equipment profiles (EEP).
+"""EnOcean serial protocol (ESP3) and equipment profiles (EEP).
 
 The public API is importable from here: `from enocean import SerialCommunicator, RadioPacket, RORG`.
 """
