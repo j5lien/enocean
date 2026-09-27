@@ -31,6 +31,18 @@ with codecs.open('SUPPORTED_PROFILES.md', 'w', 'utf-8') as f_handle:
                         header.append('direction: %s' % (data.get('direction')))
                     if data.get('command'):
                         header.append('command: %s' % (data.get('command')))
+                    conditions = [
+                        '%s bits %s..%s = %s'
+                        % (
+                            c.get('source'),
+                            c.get('offset'),
+                            int(c.get('offset')) + int(c.get('size')) - 1,
+                            c.get('value'),
+                        )
+                        for c in data.findall('condition')
+                    ]
+                    if conditions:
+                        header.append('when: %s' % ', '.join(conditions))
 
                     if header:
                         f_handle.write('###### %s\n' % ' '.join(header))
@@ -42,11 +54,29 @@ with codecs.open('SUPPORTED_PROFILES.md', 'w', 'utf-8') as f_handle:
                         )
                     )
                     for child in data:
+                        if child.tag == 'condition':
+                            continue
                         values = []
                         for item in child:
-                            if item.tag == 'rangeitem':
+                            if item.tag == 'rangeitem' and item.get('scale-min') is not None:
                                 values.append(
-                                    '%s-%s - %s' % (item.get('start'), item.get('end'), item.get('description'))
+                                    '%s-%s ↔ %s-%s %s'
+                                    % (
+                                        item.get('start'),
+                                        item.get('end'),
+                                        item.get('scale-min'),
+                                        item.get('scale-max'),
+                                        item.get('unit', child.get('unit', '')),
+                                    )
+                                )
+                            elif item.tag == 'rangeitem':
+                                values.append(
+                                    '%s-%s - %s'
+                                    % (
+                                        item.get('start'),
+                                        item.get('end'),
+                                        item.get('description').replace(': {value}', ''),
+                                    )
                                 )
                             elif item.tag == 'item':
                                 values.append('%s - %s' % (item.get('value'), item.get('description')))

@@ -205,12 +205,22 @@ class EEP:
         if value_desc is None:
             value_desc = self._get_rangeitem(source, raw_value)
 
-        description = value_desc.get('description') if value_desc is not None else None
+        unit = source.get('unit', '')
+        value: Any
+        if value_desc is not None and value_desc.get('scale-min') is not None:
+            # A range of raw values standing for a physical value (e.g. 1..15 -> 0.5..7.5 s)
+            start, end = int(_attr(value_desc, 'start')), int(_attr(value_desc, 'end'))
+            scl_min, scl_max = float(_attr(value_desc, 'scale-min')), float(_attr(value_desc, 'scale-max'))
+            value = scl_min + (raw_value - start) * (scl_max - scl_min) / (end - start) if end != start else scl_min
+            unit = value_desc.get('unit', unit)
+        else:
+            description = value_desc.get('description') if value_desc is not None else None
+            value = description.format(value=raw_value) if description else ''
         return {
             _attr(source, 'shortcut'): {
                 'description': source.get('description'),
-                'unit': source.get('unit', ''),
-                'value': description.format(value=raw_value) if description else '',
+                'unit': unit,
+                'value': value,
                 'raw_value': raw_value,
             }
         }
@@ -235,9 +245,23 @@ class EEP:
         # store value in bitfield
         return self._set_raw(target, int(raw_value), bitarray)
 
-    def _set_enum(self, target: Element, value: int | str, bitarray: list[bool]) -> list[bool]:
-        """set given enum value (by string or integer value) to target field in bitarray"""
-        # derive raw value
+    def _set_enum(self, target: Element, value: int | float | str, bitarray: list[bool]) -> list[bool]:
+        """
+        Set an enum field in bitarray: by raw value (int), by description (str), or by physical value (float) for
+        ranges with a scale.
+        """
+        if isinstance(value, float):
+            for rangeitem in target.findall('rangeitem'):
+                if rangeitem.get('scale-min') is None:
+                    continue
+                start, end = int(_attr(rangeitem, 'start')), int(_attr(rangeitem, 'end'))
+                scl_min, scl_max = float(_attr(rangeitem, 'scale-min')), float(_attr(rangeitem, 'scale-max'))
+                if min(scl_min, scl_max) <= value <= max(scl_min, scl_max):
+                    raw = (
+                        start + (value - scl_min) * (end - start) / (scl_max - scl_min) if scl_max != scl_min else start
+                    )
+                    return self._set_raw(target, round(raw), bitarray)
+            raise ValueError('Value %s is outside the scaled ranges of %s.' % (value, target.get('shortcut')))
         if isinstance(value, int):
             # check whether this value exists
             if (
@@ -251,7 +275,17 @@ class EEP:
         else:
             value_item = self._find_child(target, 'item', description=value)
             if value_item is None:
-                raise ValueError('Enum description for value "%s" not found in EEP.' % (value))
+                # Official descriptions are long ('Button AI: "Switch light on" or ...'): accept their label, the part
+                # before the colon, when unambiguous
+                label = str(value).strip().lower()
+                matching = [
+                    item
+                    for item in target.findall('item')
+                    if item.get('description', '').split(':')[0].strip().lower() == label
+                ]
+                if len(matching) != 1:
+                    raise ValueError('Enum description for value "%s" not found in EEP.' % (value))
+                value_item = matching[0]
             raw_value = int(_attr(value_item, 'value'))
         return self._set_raw(target, raw_value, bitarray)
 
@@ -306,8 +340,12 @@ class EEP:
         rorg_type: int,
         direction: int | None = None,
         command: int | None = None,
+        status: list[bool] | None = None,
     ) -> Element | None:
-        """Find profile and data description, matching RORG, FUNC and TYPE"""
+        """
+        The <data> variant of a profile to decode or build a telegram with: the one for `command` or `direction` when
+        given, else the one whose conditions the telegram's data bits (bitarray) and status bits match.
+        """
         if not self.init_ok:
             self.logger.warning('EEP.xml not loaded!')
             return None
@@ -342,9 +380,37 @@ class EEP:
         # extract data description
         # the direction tag is optional
         if direction is None:
-            detected = self._detect_command(profile, bitarray)
+            detected = self._detect_variant(profile, bitarray, status)
+            if detected is None:
+                detected = self._detect_command(profile, bitarray)
             return detected if detected is not None else profile.find('data')
         return self._find_child(profile, 'data', direction=direction)
+
+    @staticmethod
+    def _detect_variant(profile: Element, bitarray: list[bool], status: list[bool] | None) -> Element | None:
+        """
+        The variant whose <condition> elements (data or status bits the telegram must hold) all match, preferring
+        variants of the telegram's length, then the most specific one. None if no variant has conditions or none
+        matches.
+        """
+        variants = [data for data in profile.findall('data') if data.find('condition') is not None]
+        if not variants or not bitarray:
+            return None
+
+        def matches(data: Element) -> bool:
+            for condition in data.findall('condition'):
+                bits = status if condition.get('source') == 'status' else bitarray
+                if bits is None or EEP._get_raw(condition, bits) != int(_attr(condition, 'value')):
+                    return False
+            return True
+
+        same_length = [data for data in variants if int(data.get('bits', 0)) * 8 == len(bitarray)]
+        for candidates in (same_length, variants):
+            matching = [data for data in candidates if matches(data)]
+            if matching:
+                # The most specific variant (e.g. D2-30 command 3 for heating channel 31 over plain command 3)
+                return max(matching, key=lambda data: len(data.findall('condition')))
+        return None
 
     @staticmethod
     def _detect_command(profile: Element, bitarray: list[bool]) -> Element | None:

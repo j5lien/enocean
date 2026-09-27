@@ -34,8 +34,19 @@ class Variant:
     def __init__(self, rorg, func, type_, profile, data):
         self.rorg, self.func, self.type = rorg, func, type_
         self.data = data
-        self.direction = int(data.get('direction')) if data.get('direction') else None
-        self.command = int(data.get('command')) if data.get('command') else None
+        self.direction = int(data.get('direction')) if data.get('direction') is not None else None
+        self.command = int(data.get('command')) if data.get('command') is not None else None
+        positions = {(tag.get('offset'), tag.get('size')): tag.get('shortcut') for tag in data}
+        # Field values the telegram must carry to be this variant (data conditions), and status bits
+        self.conditions = {}
+        self.status_conditions = set()
+        for condition in data.findall('condition'):
+            if condition.get('source') == 'status':
+                self.status_conditions.add((condition.get('offset'), condition.get('size')))
+            elif positions.get((condition.get('offset'), condition.get('size'))):
+                self.conditions[positions[(condition.get('offset'), condition.get('size'))]] = int(
+                    condition.get('value')
+                )
         command_tag = profile.find('command')
         self.command_shortcut = command_tag.get('shortcut') if command_tag is not None else None
         self.id = '%02X-%02X-%02X' % (rorg, func, type_)
@@ -59,28 +70,61 @@ class Variant:
         return FIXED_WIDTH_BITS.get(self.rorg)
 
     def is_command_field(self, tag):
-        return tag.get('shortcut') in ('CMD', self.command_shortcut)
+        """Fields whose value selects the variant (command, other conditions): not freely settable."""
+        return tag.get('shortcut') in ('CMD', self.command_shortcut) or tag.get('shortcut') in self.conditions
+
+    def is_status_condition(self, tag):
+        return (tag.get('offset'), tag.get('size')) in self.status_conditions
 
     def packet(self, payload, status=0):
         data = [self.rorg] + list(payload) + [0x01, 0x02, 0x03, 0x04, status]
         packet = RadioPacket(1, data, [0x03, 0xFF, 0xFF, 0xFF, 0xFF, 0x40, 0x00])
-        packet.parse_eep(self.func, self.type, self.direction, self.command)
+        packet.select_eep(self.func, self.type, self.direction, self.command)
+        # Decode with this very variant, whatever the bit pattern says
+        packet._profile = self.data
+        packet.parse_eep()
         return packet
 
 
 def load_variants():
     eep = EEP()
-    return [
+    variants = [
         Variant(rorg, func, type_, profile, data)
         for rorg, funcs in sorted(eep.telegrams.items())
         for func, types in sorted(funcs.items())
         for type_, profile in sorted(types.items())
         for data in profile.findall('data')
     ]
+    # Variants the spec gives no way to tell apart from an earlier one (same conditions, e.g. D2-30 command 6)
+    signatures = {}
+    for variant in variants:
+        key = (
+            variant.rorg,
+            variant.func,
+            variant.type,
+            variant.direction,
+            variant.command,
+            tuple(sorted(variant.conditions.items())),
+            tuple(sorted(variant.status_conditions)),
+        )
+        variant.indistinguishable = bool(variant.conditions or variant.status_conditions) and key in signatures
+        signatures.setdefault(key, variant)
+    # Variants sharing a command (e.g. D2-01 command 15, told apart by ECID) or without any: number them
+    counts = {}
+    for variant in variants:
+        counts[variant.id] = counts.get(variant.id, 0) + 1
+    seen = {}
+    for variant in variants:
+        if counts[variant.id] > 1:
+            seen[variant.id] = seen.get(variant.id, 0) + 1
+            variant.id += '-v%d' % seen[variant.id]
+    return variants
 
 
 VARIANTS = load_variants()
 CREATABLE = [v for v in VARIANTS if v.rorg in CREATABLE_RORGS]
+# Round trips decode like received telegrams: variants that can't be told apart from an earlier one can't round-trip
+ROUND_TRIP = [v for v in CREATABLE if not v.indistinguishable]
 
 
 def by_id(variants):
@@ -184,7 +228,7 @@ def create(variant, learn=False, **values):
         command=variant.command,
         sender=[0x01, 0x02, 0x03, 0x04],
         learn=learn,
-        **values,
+        **{**variant.conditions, **values},
     )
 
 
@@ -196,13 +240,13 @@ def test_create_default_packet(variant):
         assert len(packet.data) == 1 + variant.width // 8 + 5
 
 
-@by_id(CREATABLE)
+@by_id(ROUND_TRIP)
 def test_enum_values_round_trip(variant):
     for tag in variant.data_fields:
         if tag.tag != 'enum' or variant.is_command_field(tag):
             continue
         for value in enum_values(tag):
-            if tag.get('shortcut') == 'LRNB':
+            if tag.get('shortcut') in ('LRNB', 'LRN'):
                 # The 4BS learn bit is driven by create(learn=...), not by the field value
                 packet = create(variant, learn=(value == 0))
             else:
@@ -210,7 +254,7 @@ def test_enum_values_round_trip(variant):
             assert packet.parsed[tag.get('shortcut')]['raw_value'] == value, '%s=%d' % (tag.get('shortcut'), value)
 
 
-@by_id(CREATABLE)
+@by_id(ROUND_TRIP)
 def test_value_fields_round_trip(variant):
     for tag in variant.data_fields:
         if tag.tag != 'value':
@@ -223,10 +267,10 @@ def test_value_fields_round_trip(variant):
             assert parsed['value'] == pytest.approx(scaled), tag.get('shortcut')
 
 
-@by_id([v for v in CREATABLE if any(tag.tag == 'status' for tag in v.fields)])
+@by_id([v for v in ROUND_TRIP if any(tag.tag == 'status' for tag in v.fields)])
 def test_status_fields_round_trip(variant):
     for tag in variant.fields:
-        if tag.tag == 'status':
+        if tag.tag == 'status' and not variant.is_status_condition(tag):
             for value in (True, False):
                 packet = create(variant, **{tag.get('shortcut'): value})
                 assert packet.parsed[tag.get('shortcut')]['value'] is value, '%s=%s' % (tag.get('shortcut'), value)
@@ -273,7 +317,7 @@ def test_decoding_matches_snapshot():
         assert current[variant_id] == expected[variant_id], variant_id
 
 
-@by_id([v for v in CREATABLE if v.command is not None])
+@by_id([v for v in ROUND_TRIP if v.command is not None])
 def test_command_is_detected_when_decoding(variant):
     """Decoding without command= picks the variant the telegram carries, as parsing with command= would."""
     sent = create(variant)
