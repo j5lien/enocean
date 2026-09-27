@@ -18,7 +18,6 @@ make hooks         # install pre-commit hooks (ruff, mypy, uv.lock, SUPPORTED_PR
 make test          # uv run pytest
 make test-linux    # same, in a Linux Docker container (PY=3.10 to pick the version)
 make test-hardware # against a real stick configured in .env (copy .env.example); interactive ones ask to press a switch
-make test-timing   # WITH_TIMINGS=1, enables @timing-decorated rounds/limits
 make cov           # pytest with coverage
 make lint          # ruff check + ruff format --check + mypy --strict on the package (config in pyproject.toml)
 make format        # ruff format

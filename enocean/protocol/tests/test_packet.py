@@ -2,12 +2,10 @@ import datetime
 
 import pytest
 
-from enocean.decorators import timing
 from enocean.protocol.constants import EVENT_CODE, PACKET, PARSE_RESULT, RORG
 from enocean.protocol.packet import EventPacket, Packet, RadioPacket
 
 
-@timing(1000)
 def test_packet_examples():
     """Tests examples found at EnOceanSerialProtocol3.pdf / 74"""
     # fmt: off
@@ -119,7 +117,6 @@ def test_packet_examples():
         assert pack.repeater_count == 0
 
 
-@timing(1000)
 def test_packet_fails():
     """
     Tests designed to fail.

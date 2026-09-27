@@ -1,11 +1,9 @@
 import pytest
 
-from enocean.decorators import timing
 from enocean.protocol.constants import PACKET, RORG
 from enocean.protocol.packet import Packet, RadioPacket
 
 
-@timing(1000)
 def test_packet_assembly():
     # fmt: off
     PACKET_CONTENT_1 = bytearray([
@@ -101,7 +99,6 @@ def test_packet_assembly():
 
 
 # Corresponds to the tests done in test_eep
-@timing(1000)
 def test_temperature():
     # fmt: off
     TEMPERATURE = bytearray([
@@ -149,7 +146,6 @@ def test_temperature():
 
 
 # Corresponds to the tests done in test_eep
-@timing(1000)
 def test_magnetic_switch():
     # fmt: off
     MAGNETIC_SWITCH = bytearray([
@@ -226,7 +222,6 @@ def test_magnetic_switch():
     assert packet.learn is True
 
 
-@timing(1000)
 def test_switch():
     # fmt: off
     SWITCH = bytearray([
@@ -281,7 +276,6 @@ def test_switch():
     assert list(packet_serialized) == list(SWITCH)
 
 
-@timing(1000)
 def test_illegal_eep_enum1():
     with pytest.raises(ValueError):
         RadioPacket.create(
@@ -289,14 +283,12 @@ def test_illegal_eep_enum1():
         )
 
 
-@timing(1000)
 def test_illegal_eep_enum2():
     with pytest.raises(ValueError):
         RadioPacket.create(rorg=RORG.RPS, rorg_func=0x02, rorg_type=0x02, sender=[0x00, 0x29, 0x89, 0x79], EB=2)
 
 
 # Corresponds to the tests done in test_eep
-@timing(1000)
 def test_packets_with_destination():
     # fmt: off
     TEMPERATURE = bytearray([
@@ -347,7 +339,6 @@ def test_packets_with_destination():
     assert packet.learn is False
 
 
-@timing(1000)
 def test_vld():
     # fmt: off
     SWITCH = bytearray([
