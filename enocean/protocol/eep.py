@@ -1,20 +1,50 @@
 import logging
 import os
 from collections import OrderedDict
+from collections.abc import Iterable, Mapping
+from typing import Any, TypedDict
 from xml.etree import ElementTree
-
-import enocean.utils
+from xml.etree.ElementTree import Element
 
 # Left as a helper
 from enocean.protocol.constants import RORG  # noqa: F401
 
 
+class FieldValue(TypedDict):
+    """A decoded EEP field, as found in Packet.parsed."""
+
+    description: str | None
+    unit: str
+    value: Any
+    raw_value: int | None
+
+
+def _attr(element: Element, name: str) -> str:
+    return element.attrib[name]
+
+
+def _child(element: Element, tag: str) -> Element:
+    child = element.find(tag)
+    if child is None:
+        raise KeyError('<%s> has no <%s>' % (element.tag, tag))
+    return child
+
+
+def _float_text(element: Element, path: str) -> float:
+    return float(_child(element, path).text or '')
+
+
+def _range_and_scale(element: Element) -> tuple[float, float, float, float]:
+    rng, scl = _child(element, 'range'), _child(element, 'scale')
+    return _float_text(rng, 'min'), _float_text(rng, 'max'), _float_text(scl, 'min'), _float_text(scl, 'max')
+
+
 class EEP:
     logger = logging.getLogger('enocean.protocol.eep')
 
-    def __init__(self):
+    def __init__(self) -> None:
         self.init_ok = False
-        self.telegrams = {}
+        self.telegrams: dict[int, dict[int, dict[int, Element]]] = {}
 
         eep_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'EEP.xml')
         try:
@@ -28,11 +58,11 @@ class EEP:
             self.logger.warning('Cannot load protocol file!')
             self.init_ok = False
 
-    def __load_xml(self):
+    def __load_xml(self) -> None:
         self.telegrams = {
-            enocean.utils.from_hex_string(telegram.get('rorg')): {
-                enocean.utils.from_hex_string(function.get('func')): {
-                    enocean.utils.from_hex_string(type.get('type')): type for type in function.iter('profile')
+            int(_attr(telegram, 'rorg'), 16): {
+                int(_attr(function, 'func'), 16): {
+                    int(_attr(type, 'type'), 16): type for type in function.iter('profile')
                 }
                 for function in telegram.iter('profiles')
             }
@@ -40,7 +70,7 @@ class EEP:
         }
 
     @staticmethod
-    def _find_child(source, tag, **attributes):
+    def _find_child(source: Element, tag: str, **attributes: object) -> Element | None:
         """First child element with the given tag and attribute values (compared as strings), or None."""
         for child in source.findall(tag):
             if all(child.get(name) == str(value) for name, value in attributes.items()):
@@ -48,10 +78,10 @@ class EEP:
         return None
 
     @staticmethod
-    def _get_raw(source, bitarray):
+    def _get_raw(source: Element, bitarray: list[bool]) -> int | None:
         """Get raw data as integer, based on offset and size"""
-        offset = int(source.get('offset'))
-        size = int(source.get('size'))
+        offset = int(_attr(source, 'offset'))
+        size = int(_attr(source, 'size'))
         length = len(bitarray)
 
         if offset >= length:
@@ -61,34 +91,27 @@ class EEP:
         return int(''.join(['1' if digit else '0' for digit in bitarray[offset:end]]), 2)
 
     @staticmethod
-    def _set_raw(target, raw_value, bitarray):
+    def _set_raw(target: Element, raw_value: int, bitarray: list[bool]) -> list[bool]:
         """put value into bit array"""
-        offset = int(target.get('offset'))
-        size = int(target.get('size'))
+        offset = int(_attr(target, 'offset'))
+        size = int(_attr(target, 'size'))
         for digit in range(size):
             bitarray[offset + digit] = (raw_value >> (size - digit - 1)) & 0x01 != 0
         return bitarray
 
     @staticmethod
-    def _get_rangeitem(source, raw_value):
+    def _get_rangeitem(source: Element, raw_value: int) -> Element | None:
         for rangeitem in source.findall('rangeitem'):
             if raw_value in range(int(rangeitem.get('start', -1)), int(rangeitem.get('end', -1)) + 1):
                 return rangeitem
+        return None
 
-    def _get_value(self, source, bitarray):
+    def _get_value(self, source: Element, raw_value: int) -> dict[str, FieldValue]:
         """Get value, based on the data in XML"""
-        raw_value = self._get_raw(source, bitarray)
-
-        rng = source.find('range')
-        rng_min = float(rng.find('min').text)
-        rng_max = float(rng.find('max').text)
-
-        scl = source.find('scale')
-        scl_min = float(scl.find('min').text)
-        scl_max = float(scl.find('max').text)
+        rng_min, rng_max, scl_min, scl_max = _range_and_scale(source)
 
         return {
-            source.get('shortcut'): {
+            _attr(source, 'shortcut'): {
                 'description': source.get('description'),
                 'unit': source.attrib['unit'],
                 'value': (scl_max - scl_min) / (rng_max - rng_min) * (raw_value - rng_min) + scl_min,
@@ -96,33 +119,28 @@ class EEP:
             }
         }
 
-    def _get_enum(self, source, bitarray):
+    def _get_enum(self, source: Element, raw_value: int) -> dict[str, FieldValue]:
         """Get enum value, based on the data in XML"""
-        raw_value = self._get_raw(source, bitarray)
-
         # Find value description.
         value_desc = self._find_child(source, 'item', value=raw_value)
         if value_desc is None:
             value_desc = self._get_rangeitem(source, raw_value)
 
+        description = value_desc.get('description') if value_desc is not None else None
         return {
-            source.get('shortcut'): {
+            _attr(source, 'shortcut'): {
                 'description': source.get('description'),
                 'unit': source.get('unit', ''),
-                'value': (
-                    value_desc.get('description').format(value=raw_value)
-                    if value_desc is not None and value_desc.get('description')
-                    else ''
-                ),
+                'value': description.format(value=raw_value) if description else '',
                 'raw_value': raw_value,
             }
         }
 
-    def _get_boolean(self, source, bitarray):
+    def _get_boolean(self, source: Element, bitarray: list[bool]) -> dict[str, FieldValue]:
         """Get boolean value, based on the data in XML"""
         raw_value = self._get_raw(source, bitarray)
         return {
-            source.get('shortcut'): {
+            _attr(source, 'shortcut'): {
                 'description': source.get('description'),
                 'unit': source.get('unit', ''),
                 'value': bool(raw_value),
@@ -130,20 +148,15 @@ class EEP:
             }
         }
 
-    def _set_value(self, target, value, bitarray):
+    def _set_value(self, target: Element, value: float, bitarray: list[bool]) -> list[bool]:
         """set given numeric value to target field in bitarray"""
         # derive raw value
-        rng = target.find('range')
-        rng_min = float(rng.find('min').text)
-        rng_max = float(rng.find('max').text)
-        scl = target.find('scale')
-        scl_min = float(scl.find('min').text)
-        scl_max = float(scl.find('max').text)
+        rng_min, rng_max, scl_min, scl_max = _range_and_scale(target)
         raw_value = (value - scl_min) * (rng_max - rng_min) / (scl_max - scl_min) + rng_min
         # store value in bitfield
         return self._set_raw(target, int(raw_value), bitarray)
 
-    def _set_enum(self, target, value, bitarray):
+    def _set_enum(self, target: Element, value: int | str, bitarray: list[bool]) -> list[bool]:
         """set given enum value (by string or integer value) to target field in bitarray"""
         # derive raw value
         if isinstance(value, int):
@@ -160,16 +173,24 @@ class EEP:
             value_item = self._find_child(target, 'item', description=value)
             if value_item is None:
                 raise ValueError('Enum description for value "%s" not found in EEP.' % (value))
-            raw_value = int(value_item.get('value'))
+            raw_value = int(_attr(value_item, 'value'))
         return self._set_raw(target, raw_value, bitarray)
 
     @staticmethod
-    def _set_boolean(target, data, bitarray):
+    def _set_boolean(target: Element, data: bool, bitarray: list[bool]) -> list[bool]:
         """set given value to target bit in bitarray"""
-        bitarray[int(target.get('offset'))] = data
+        bitarray[int(_attr(target, 'offset'))] = data
         return bitarray
 
-    def find_profile(self, bitarray, eep_rorg, rorg_func, rorg_type, direction=None, command=None):
+    def find_profile(
+        self,
+        bitarray: list[bool],
+        eep_rorg: int,
+        rorg_func: int,
+        rorg_type: int,
+        direction: int | None = None,
+        command: int | None = None,
+    ) -> Element | None:
         """Find profile and data description, matching RORG, FUNC and TYPE"""
         if not self.init_ok:
             self.logger.warning('EEP.xml not loaded!')
@@ -208,25 +229,31 @@ class EEP:
             return profile.find('data')
         return self._find_child(profile, 'data', direction=direction)
 
-    def get_values(self, profile, bitarray, status):
+    def get_values(
+        self, profile: Element | None, bitarray: list[bool], status: list[bool]
+    ) -> tuple[Iterable[str], dict[str, FieldValue]]:
         """Get keys and values from bitarray"""
         if not self.init_ok or profile is None:
             return [], {}
 
-        output = OrderedDict({})
+        output: OrderedDict[str, FieldValue] = OrderedDict()
         for source in profile:
-            # Skip fields lying beyond the end of a (truncated) telegram
-            if source.tag in ('value', 'enum') and self._get_raw(source, bitarray) is None:
-                continue
-            if source.tag == 'value':
-                output.update(self._get_value(source, bitarray))
-            if source.tag == 'enum':
-                output.update(self._get_enum(source, bitarray))
+            if source.tag in ('value', 'enum'):
+                raw_value = self._get_raw(source, bitarray)
+                # Skip fields lying beyond the end of a (truncated) telegram
+                if raw_value is None:
+                    continue
+                if source.tag == 'value':
+                    output.update(self._get_value(source, raw_value))
+                else:
+                    output.update(self._get_enum(source, raw_value))
             if source.tag == 'status':
                 output.update(self._get_boolean(source, status))
         return output.keys(), output
 
-    def set_values(self, profile, data, status, properties):
+    def set_values(
+        self, profile: Element | None, data: list[bool], status: list[bool], properties: Mapping[str, Any]
+    ) -> tuple[list[bool], list[bool]]:
         """Update data based on data contained in properties"""
         if not self.init_ok or profile is None:
             return data, status

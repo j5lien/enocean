@@ -1,10 +1,13 @@
+import datetime
 import logging
 from collections import OrderedDict
+from typing import Any
+from xml.etree.ElementTree import Element
 
 import enocean.utils
 from enocean.protocol import crc8
 from enocean.protocol.constants import DB0, DB2, DB3, DB4, DB6, PACKET, PARSE_RESULT, RORG
-from enocean.protocol.eep import EEP
+from enocean.protocol.eep import EEP, FieldValue
 
 
 class Packet:
@@ -18,14 +21,16 @@ class Packet:
     eep = EEP()
     logger = logging.getLogger('enocean.protocol.packet')
 
-    def __init__(self, packet_type, data=None, optional=None):
+    def __init__(self, packet_type: int, data: list[int] | None = None, optional: list[int] | None = None) -> None:
         self.packet_type = packet_type
-        self.rorg = RORG.UNDEFINED
-        self.rorg_func = None
-        self.rorg_type = None
-        self.rorg_manufacturer = None
+        self.rorg: int = RORG.UNDEFINED
+        self.rorg_func: int | None = None
+        self.rorg_type: int | None = None
+        self.rorg_manufacturer: int | None = None
 
-        self.received = None
+        self.received: datetime.datetime | None = None
+        self.data: list[int]
+        self.optional: list[int]
 
         if not isinstance(data, list) or data is None:
             self.logger.warning('Replacing Packet.data with default value.')
@@ -40,13 +45,13 @@ class Packet:
             self.optional = optional
 
         self.status = 0
-        self.parsed = OrderedDict({})
+        self.parsed: OrderedDict[str, FieldValue] = OrderedDict()
         self.repeater_count = 0
-        self._profile = None
+        self._profile: Element | None = None
 
         self.parse()
 
-    def __str__(self):
+    def __str__(self) -> str:
         return '0x%02X %s %s %s' % (
             self.packet_type,
             [hex(o) for o in self.data],
@@ -54,7 +59,9 @@ class Packet:
             self.parsed,
         )
 
-    def __eq__(self, other):
+    def __eq__(self, other: object) -> bool:
+        if not isinstance(other, Packet):
+            return NotImplemented
         return (
             self.packet_type == other.packet_type
             and self.rorg == other.rorg
@@ -63,7 +70,7 @@ class Packet:
         )
 
     @property
-    def _bit_data(self):
+    def _bit_data(self) -> list[bool]:
         # First and last 5 bits are always defined, so the data we're modifying is between them...
         # TODO: This is valid for the packets we're currently manipulating.
         # Needs the redefinition of Packet.data -> Packet.message.
@@ -73,7 +80,7 @@ class Packet:
         return enocean.utils.to_bitarray(self.data[1 : len(self.data) - 5], (len(self.data) - 6) * 8)
 
     @_bit_data.setter
-    def _bit_data(self, value):
+    def _bit_data(self, value: list[bool]) -> None:
         # The same as getting the data, first and last 5 bits are ommitted, as they are defined...
         for byte in range(len(self.data) - 6):
             self.data[byte + 1] = enocean.utils.from_bitarray(value[byte * 8 : (byte + 1) * 8])
@@ -93,15 +100,15 @@ class Packet:
     #             self.data[byte+1] = enocean.utils.from_bitarray(value[byte*8:(byte+1)*8])
 
     @property
-    def _bit_status(self):
+    def _bit_status(self) -> list[bool]:
         return enocean.utils.to_bitarray(self.status)
 
     @_bit_status.setter
-    def _bit_status(self, value):
+    def _bit_status(self, value: list[bool]) -> None:
         self.status = enocean.utils.from_bitarray(value)
 
     @staticmethod
-    def parse_msg(buf):
+    def parse_msg(buf: bytes | bytearray | list[int]) -> tuple[PARSE_RESULT, list[int], 'Packet | None']:
         """
         Parses message from buffer.
         returns:
@@ -170,17 +177,17 @@ class Packet:
 
     @staticmethod
     def create(
-        packet_type,
-        rorg,
-        rorg_func,
-        rorg_type,
-        direction=None,
-        command=None,
-        destination=None,
-        sender=None,
-        learn=False,
-        **kwargs,
-    ):
+        packet_type: int,
+        rorg: int,
+        rorg_func: int,
+        rorg_type: int,
+        direction: int | None = None,
+        command: int | None = None,
+        destination: list[int] | None = None,
+        sender: list[int] | None = None,
+        learn: bool = False,
+        **kwargs: Any,
+    ) -> 'Packet':
         """
         Creates an packet ready for sending.
         Uses rorg, rorg_func and rorg_type to determine the values set based on EEP.
@@ -232,6 +239,8 @@ class Packet:
         elif rorg == RORG.BS4:
             packet.data.extend([0, 0, 0, 0])
         else:
+            if packet._profile is None:
+                raise ValueError('Unknown EEP profile, cannot determine the telegram length.')
             packet.data.extend([0] * int(packet._profile.get('bits', '1')))
         packet.data.extend(sender)
         packet.data.extend([0])
@@ -253,12 +262,13 @@ class Packet:
 
         # Parse the built packet, so it corresponds to the received packages
         # For example, stuff like RadioPacket.learn should be set.
-        packet = Packet.parse_msg(packet.build())[2]
-        packet.rorg = rorg
-        packet.parse_eep(rorg_func, rorg_type, direction, command)
-        return packet
+        parsed_packet = Packet.parse_msg(packet.build())[2]
+        assert parsed_packet is not None, 'a packet we just built must parse'
+        parsed_packet.rorg = rorg
+        parsed_packet.parse_eep(rorg_func, rorg_type, direction, command)
+        return parsed_packet
 
-    def parse(self):
+    def parse(self) -> OrderedDict[str, FieldValue]:
         """Parse data from Packet"""
         # Parse status from messages
         if self.rorg in [RORG.RPS, RORG.BS1, RORG.BS4]:
@@ -271,7 +281,9 @@ class Packet:
             self.repeater_count = enocean.utils.from_bitarray(self._bit_status[4:])
         return self.parsed
 
-    def select_eep(self, rorg_func, rorg_type, direction=None, command=None):
+    def select_eep(
+        self, rorg_func: int, rorg_type: int, direction: int | None = None, command: int | None = None
+    ) -> bool:
         """Set EEP based on FUNC and TYPE"""
         # set EEP profile
         self.rorg_func = rorg_func
@@ -279,7 +291,13 @@ class Packet:
         self._profile = self.eep.find_profile(self._bit_data, self.rorg, rorg_func, rorg_type, direction, command)
         return self._profile is not None
 
-    def parse_eep(self, rorg_func=None, rorg_type=None, direction=None, command=None):
+    def parse_eep(
+        self,
+        rorg_func: int | None = None,
+        rorg_type: int | None = None,
+        direction: int | None = None,
+        command: int | None = None,
+    ) -> list[str]:
         """Parse EEP based on FUNC and TYPE"""
         # set EEP profile, if demanded
         if rorg_func is not None and rorg_type is not None:
@@ -289,11 +307,11 @@ class Packet:
         self.parsed.update(values)
         return list(provides)
 
-    def set_eep(self, data):
+    def set_eep(self, data: dict[str, Any]) -> None:
         """Update packet data based on EEP. Input data is a dictionary with keys corresponding to the EEP."""
         self._bit_data, self._bit_status = self.eep.set_values(self._profile, self._bit_data, self._bit_status, data)
 
-    def build(self):
+    def build(self) -> list[int]:
         """Build Packet for sending to EnOcean controller"""
         data_length = len(self.data)
         ords = [0x55, (data_length >> 8) & 0xFF, data_length & 0xFF, len(self.optional), int(self.packet_type)]
@@ -305,41 +323,51 @@ class Packet:
 
 
 class RadioPacket(Packet):
-    destination = [0xFF, 0xFF, 0xFF, 0xFF]
+    destination: list[int] = [0xFF, 0xFF, 0xFF, 0xFF]
     dBm = 0
-    sender = [0xFF, 0xFF, 0xFF, 0xFF]
+    sender: list[int] = [0xFF, 0xFF, 0xFF, 0xFF]
     learn = True
     contains_eep = False
 
-    def __str__(self):
+    def __str__(self) -> str:
         packet_str = super().__str__()
         return '%s->%s (%d dBm): %s' % (self.sender_hex, self.destination_hex, self.dBm, packet_str)
 
     @staticmethod
-    def create(
-        rorg, rorg_func, rorg_type, direction=None, command=None, destination=None, sender=None, learn=False, **kwargs
-    ):
-        return Packet.create(
+    def create(  # type: ignore[override]
+        rorg: int,
+        rorg_func: int,
+        rorg_type: int,
+        direction: int | None = None,
+        command: int | None = None,
+        destination: list[int] | None = None,
+        sender: list[int] | None = None,
+        learn: bool = False,
+        **kwargs: Any,
+    ) -> 'RadioPacket':
+        packet = Packet.create(
             PACKET.RADIO_ERP1, rorg, rorg_func, rorg_type, direction, command, destination, sender, learn, **kwargs
         )
+        assert isinstance(packet, RadioPacket)
+        return packet
 
     @property
-    def sender_int(self):
+    def sender_int(self) -> int:
         return enocean.utils.combine_hex(self.sender)
 
     @property
-    def sender_hex(self):
+    def sender_hex(self) -> str:
         return enocean.utils.to_hex_string(self.sender)
 
     @property
-    def destination_int(self):
+    def destination_int(self) -> int:
         return enocean.utils.combine_hex(self.destination)
 
     @property
-    def destination_hex(self):
+    def destination_hex(self) -> str:
         return enocean.utils.to_hex_string(self.destination)
 
-    def parse(self):
+    def parse(self) -> OrderedDict[str, FieldValue]:
         # Optional data (sub-telegram count, destination, dBm, security level) may be omitted
         if len(self.optional) >= 6:
             self.destination = self.optional[1:5]
@@ -385,25 +413,25 @@ class UTETeachInPacket(RadioPacket):
     unidirectional = False
     response_expected = False
     number_of_channels = 0xFF
-    rorg_of_eep = RORG.UNDEFINED
+    rorg_of_eep: int = RORG.UNDEFINED
     request_type = NOT_SPECIFIC
-    channel = None
+    channel: int | None = None
 
     contains_eep = True
 
     @property
-    def bidirectional(self):
+    def bidirectional(self) -> bool:
         return not self.unidirectional
 
     @property
-    def teach_in(self):
+    def teach_in(self) -> bool:
         return self.request_type != self.DELETE
 
     @property
-    def delete(self):
+    def delete(self) -> bool:
         return self.request_type == self.DELETE
 
-    def parse(self):
+    def parse(self) -> OrderedDict[str, FieldValue]:
         super().parse()
         self.unidirectional = not self._bit_data[DB6.BIT_7]
         self.response_expected = not self._bit_data[DB6.BIT_6]
@@ -419,7 +447,7 @@ class UTETeachInPacket(RadioPacket):
             self.learn = True
         return self.parsed
 
-    def create_response_packet(self, sender_id, response=TEACHIN_ACCEPTED):
+    def create_response_packet(self, sender_id: list[int], response: list[bool] = TEACHIN_ACCEPTED) -> RadioPacket:
         # Create data:
         # - Respond with same RORG (UTE Teach-in)
         # - Always use bidirectional communication, set response code, set command identifier.
@@ -441,9 +469,9 @@ class UTETeachInPacket(RadioPacket):
 
 class ResponsePacket(Packet):
     response = 0
-    response_data = []
+    response_data: list[int] = []
 
-    def parse(self):
+    def parse(self) -> OrderedDict[str, FieldValue]:
         self.response = self.data[0]
         self.response_data = self.data[1:]
         return super().parse()
@@ -451,9 +479,9 @@ class ResponsePacket(Packet):
 
 class EventPacket(Packet):
     event = 0
-    event_data = []
+    event_data: list[int] = []
 
-    def parse(self):
+    def parse(self) -> OrderedDict[str, FieldValue]:
         self.event = self.data[0]
         self.event_data = self.data[1:]
         return super().parse()

@@ -1,7 +1,9 @@
 import logging
 import socket
+from collections.abc import Callable
 
 from enocean.communicators.communicator import Communicator
+from enocean.protocol.packet import Packet
 
 
 class TCPCommunicator(Communicator):
@@ -12,12 +14,14 @@ class TCPCommunicator(Communicator):
 
     logger = logging.getLogger('enocean.communicators.TCPCommunicator')
 
-    def __init__(self, host='', port=9637, callback=None, teach_in=True):
+    def __init__(
+        self, host: str = '', port: int = 9637, callback: Callable[[Packet], None] | None = None, teach_in: bool = True
+    ) -> None:
         super().__init__(callback, teach_in)
         self.host = host
         self.port = port
 
-    def run(self):
+    def run(self) -> None:
         self.logger.info('TCPCommunicator started')
         sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         sock.bind((self.host, self.port))
