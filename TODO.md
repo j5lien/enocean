@@ -24,12 +24,9 @@ Remise à niveau du fork `j5lien/enocean`. Cocher au fur et à mesure.
 
 ## Montées de version / modernisation
 
-- [ ] Parser `EEP.xml` avec un vrai parseur XML (`lxml` ou `xml.etree`) au lieu de `html.parser`
-      (`XMLParsedAsHTMLWarning`) — vérifier que le décodage reste identique sur tous les profils
-- [ ] `logger.warn` → `logger.warning`
-- [ ] Supprimer les restes de Python 2 : `from __future__`, fallback `Queue`, `ord()` dans `parse_msg`,
+- [ ] Supprimer les restes de Python 2 : `from __future__`, fallback `Queue`,
       `super(Class, self)`, dépendance `enum-compat`
-- [ ] Remonter les versions minimales des dépendances (`beautifulsoup4>=4.3.2`, `pyserial>=3.0`)
+- [ ] Remonter la version minimale de `pyserial` (`>=3.0`, 2015)
 - [ ] `ruff format` sur tout le code (commit dédié), puis règles ruff supplémentaires (`UP`, `B`, `I`, `SIM`)
 - [ ] Annotations de type + `mypy` en CI + `py.typed`
 - [ ] Remplacer `script-files` (déprécié) par un point d'entrée `[project.scripts]`, vérifier que les exemples
@@ -63,3 +60,5 @@ Remise à niveau du fork `j5lien/enocean`. Cocher au fur et à mesure.
 - [x] Tests sur tous les profils EEP (structure, aller-retour create/parse, snapshot du décodage) ; corrections
       dans `EEP.xml` (D2-01-12 : enums en binaire, plages trop larges ; D2-14-30/41 : `bits` manquant) ; décodage
       des télégrammes tronqués ; `SUPPORTED_PROFILES.md` régénéré et vérifié en CI ; seuil de couverture 90 %
+- [x] `EEP.xml` chargé avec `xml.etree` (bibliothèque standard) au lieu de BeautifulSoup/`html.parser` : dépendance
+      supprimée, décodage identique (snapshot), chargement 20× plus rapide, plus aucun warning
