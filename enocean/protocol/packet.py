@@ -483,7 +483,8 @@ class UTETeachInPacket(RadioPacket):
         self.rorg_manufacturer = enocean.utils.from_bitarray(
             self._bit_data[DB3.BIT_2 : DB2.BIT_7] + self._bit_data[DB4.BIT_7 : DB3.BIT_7]
         )  # noqa: E501
-        self.channel = self.data[2]
+        # Number of channels to teach in (0xFF: all); `channel` is a deprecated alias
+        self.number_of_channels = self.channel = self.data[2]
         self.rorg_type = self.data[5]
         self.rorg_func = self.data[6]
         self.rorg_of_eep = self.data[7]

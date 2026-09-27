@@ -11,7 +11,7 @@ Bugs :
       autres types lèvent `TypeError`
 - [x] Profils à plusieurs commandes : la commande est détectée depuis la trame au décodage (avant : première variante
       du profil) ; `create()` écrit la commande dans le bon champ (A5-13-01 et A5-38-08 partaient avec la commande 0)
-- [ ] `UTETeachInPacket.number_of_channels` n'est jamais lu (toujours `0xFF`) ; la valeur est dans `channel`
+- [x] `UTETeachInPacket.number_of_channels` est lu depuis la trame (était toujours `0xFF`)
 - [ ] `RadioPacket.learn` vaut toujours `True` pour les VLD (pas de bit d'apprentissage) : `None` ou documenter
 - [ ] `packet.received` : `datetime` naïf, et seulement renseigné par le communicator (le sniffer le formate avec `%z`,
       qui sort vide) : horodatage UTC avec fuseau
@@ -31,6 +31,7 @@ Dépréciations à retirer (changements incompatibles : version 2.0, avec guide 
 - [ ] `script-files` (déprécié par setuptools) qui installe `enocean_example.py` dans le PATH : supprimer, ou le
       remplacer par un point d'entrée `[project.scripts]`
 - [ ] Ré-export de `RORG` dans `enocean.protocol.eep` (« left as a helper »)
+- [ ] `UTETeachInPacket.channel`, alias mal nommé de `number_of_channels`
 
 ## 2. API d'intégration (d'après l'usage dans enocean-sniffer)
 
