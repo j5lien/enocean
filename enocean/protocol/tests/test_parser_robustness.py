@@ -1,4 +1,3 @@
-# -*- encoding: utf-8 -*-
 '''
 Property-based tests for the ESP3 stream parser: whatever bytes come off the serial line (radio noise,
 truncated or corrupted frames, arbitrary packet contents), parsing must never raise, must always make
@@ -7,7 +6,8 @@ progress, and must recover every valid frame that follows the garbage.
 import logging
 import os
 
-from hypothesis import HealthCheck, assume, given, settings, strategies as st
+from hypothesis import HealthCheck, assume, given, settings
+from hypothesis import strategies as st
 
 from enocean.communicators.communicator import Communicator
 from enocean.protocol import crc8

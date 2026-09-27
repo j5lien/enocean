@@ -1,10 +1,8 @@
-# -*- encoding: utf-8 -*-
-from __future__ import print_function, unicode_literals, division, absolute_import
 
 from enocean.communicators import Communicator
-from enocean.protocol.packet import Packet
-from enocean.protocol.constants import RORG, DB6
 from enocean.decorators import timing
+from enocean.protocol.constants import DB6, RORG
+from enocean.protocol.packet import Packet
 
 
 @timing(rounds=100, limit=750)

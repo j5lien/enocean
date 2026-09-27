@@ -1,8 +1,7 @@
-# -*- encoding: utf-8 -*-
-from __future__ import print_function, unicode_literals, division, absolute_import
 import logging
-import serial
 import time
+
+import serial
 
 from enocean.communicators.communicator import Communicator
 
@@ -12,7 +11,7 @@ class SerialCommunicator(Communicator):
     logger = logging.getLogger('enocean.communicators.SerialCommunicator')
 
     def __init__(self, port='/dev/ttyAMA0', callback=None):
-        super(SerialCommunicator, self).__init__(callback)
+        super().__init__(callback)
         # Initialize serial port
         self.__ser = serial.Serial(port, 57600, timeout=0.1)
 

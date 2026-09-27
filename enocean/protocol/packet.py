@@ -1,15 +1,13 @@
-# -*- encoding: utf-8 -*-
-from __future__ import print_function, unicode_literals, division, absolute_import
 import logging
 from collections import OrderedDict
 
 import enocean.utils
 from enocean.protocol import crc8
+from enocean.protocol.constants import DB0, DB2, DB3, DB4, DB6, PACKET, PARSE_RESULT, RORG
 from enocean.protocol.eep import EEP
-from enocean.protocol.constants import PACKET, RORG, PARSE_RESULT, DB0, DB2, DB3, DB4, DB6
 
 
-class Packet(object):
+class Packet:
     '''
     Base class for Packet.
     Mainly used for for packet generation and
@@ -53,9 +51,6 @@ class Packet(object):
             [hex(o) for o in self.data],
             [hex(o) for o in self.optional],
             self.parsed)
-
-    def __unicode__(self):
-        return self.__str__()
 
     def __eq__(self, other):
         return self.packet_type == other.packet_type and self.rorg == other.rorg \
@@ -303,7 +298,7 @@ class RadioPacket(Packet):
     contains_eep = False
 
     def __str__(self):
-        packet_str = super(RadioPacket, self).__str__()
+        packet_str = super().__str__()
         return '%s->%s (%d dBm): %s' % (self.sender_hex, self.destination_hex, self.dBm, packet_str)
 
     @staticmethod
@@ -353,7 +348,7 @@ class RadioPacket(Packet):
                     self.rorg_manufacturer = enocean.utils.from_bitarray(self._bit_data[DB2.BIT_2:DB0.BIT_7])
                     self.logger.debug('learn received, EEP detected, RORG: 0x%02X, FUNC: 0x%02X, TYPE: 0x%02X, Manufacturer: 0x%02X' % (self.rorg, self.rorg_func, self.rorg_type, self.rorg_manufacturer))  # noqa: E501
 
-        return super(RadioPacket, self).parse()
+        return super().parse()
 
 
 class UTETeachInPacket(RadioPacket):
@@ -390,7 +385,7 @@ class UTETeachInPacket(RadioPacket):
         return self.request_type == self.DELETE
 
     def parse(self):
-        super(UTETeachInPacket, self).parse()
+        super().parse()
         self.unidirectional = not self._bit_data[DB6.BIT_7]
         self.response_expected = not self._bit_data[DB6.BIT_6]
         self.request_type = enocean.utils.from_bitarray(self._bit_data[DB6.BIT_5:DB6.BIT_3])
@@ -427,7 +422,7 @@ class ResponsePacket(Packet):
     def parse(self):
         self.response = self.data[0]
         self.response_data = self.data[1:]
-        return super(ResponsePacket, self).parse()
+        return super().parse()
 
 
 class EventPacket(Packet):
@@ -437,4 +432,4 @@ class EventPacket(Packet):
     def parse(self):
         self.event = self.data[0]
         self.event_data = self.data[1:]
-        return super(EventPacket, self).parse()
+        return super().parse()

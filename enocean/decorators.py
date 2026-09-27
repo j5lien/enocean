@@ -1,7 +1,5 @@
-# -*- encoding: utf-8 -*-
-from __future__ import print_function, unicode_literals, division
-import time
 import functools
+import time
 from os import environ
 
 

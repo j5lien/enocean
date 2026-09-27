@@ -1,5 +1,3 @@
-# -*- encoding: utf-8 -*-
-from __future__ import print_function, unicode_literals, division, absolute_import
 import logging
 import socket
 
@@ -11,7 +9,7 @@ class TCPCommunicator(Communicator):
     logger = logging.getLogger('enocean.communicators.TCPCommunicator')
 
     def __init__(self, host='', port=9637):
-        super(TCPCommunicator, self).__init__()
+        super().__init__()
         self.host = host
         self.port = port
 
@@ -25,14 +23,14 @@ class TCPCommunicator(Communicator):
         while not self._stop_flag.is_set():
             try:
                 (client, addr) = sock.accept()
-            except socket.timeout:
+            except TimeoutError:
                 continue
             self.logger.debug('Client "%s" connected', addr)
             client.settimeout(0.5)
             while True and not self._stop_flag.is_set():
                 try:
                     data = client.recv(2048)
-                except socket.timeout:
+                except TimeoutError:
                     break
                 if not data:
                     break

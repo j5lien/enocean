@@ -107,9 +107,9 @@ base class's queue/threading contract.
 
 ## Compatibility notes
 
-- CI (`.github/workflows/ci.yml`) tests Python 3.10–3.14 on Linux, plus 3.14 on macOS/Windows, and checks
-  `uv.lock` is current, ruff, and that the built wheel imports and loads `EEP.xml`. Actions are pinned by
-  commit SHA; Dependabot (`.github/dependabot.yml`) bumps them and the uv dependencies weekly.
-  `requires-python = ">=3.10"`. The codebase still carries
-  `from __future__ import ...` imports and a `try: import queue / except ImportError: import Queue as queue`
-  Python 2 fallback in a few places — leftovers from Python 2 support, candidates for cleanup.
+- Python >= 3.10 only (`requires-python`); CI (`.github/workflows/ci.yml`) tests 3.10–3.14 on Linux, plus 3.14 on
+  macOS/Windows, and checks `uv.lock` is current, ruff, `SUPPORTED_PROFILES.md` freshness, coverage >= 90%, and that
+  the built wheel imports and loads `EEP.xml`. Actions are pinned by commit SHA; Dependabot
+  (`.github/dependabot.yml`) bumps them and the uv dependencies weekly.
+- The Python 2 compatibility code has been removed; don't reintroduce `from __future__` imports, `Queue` fallbacks
+  or `super(Class, self)`.
