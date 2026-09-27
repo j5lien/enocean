@@ -78,7 +78,21 @@ print(packet.to_dict())  # JSON-serializable, e.g. to index or publish it
 Profiles with several commands (e.g. D2-01-12) are decoded with the command the telegram carries. To see what a
 profile contains: `EEP().describe('D2-01-12')`.
 
-Build and send a telegram:
+Control actuators the module is taught in to:
+
+```python
+from enocean import BlindActuator, SwitchActuator
+
+light = SwitchActuator(communicator, '05:99:77:AF')  # D2-01-12 by default
+light.turn_on(channel=1)
+light.query_status()  # answered by a status telegram (command 4)
+
+cover = BlindActuator(communicator, '05:97:BA:73')  # D2-05-00 by default
+cover.go_to(position=50)
+cover.stop()
+```
+
+Or build any telegram from its profile's fields:
 
 ```python
 from enocean import RORG, RadioPacket
@@ -89,7 +103,7 @@ packet = RadioPacket.create(
     rorg_func=0x01,
     rorg_type=0x12,
     command=1,
-    destination=[0x01, 0x94, 0xE3, 0xB9],
+    destination=[0x05, 0x99, 0x77, 0xAF],
     sender=communicator.base_id,
     IO=0,
     OV=100,

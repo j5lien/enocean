@@ -35,8 +35,8 @@ Dépréciations à retirer (changements incompatibles : version 2.0, avec guide 
       appareils ignorés ; accepte le format `KNOWN_DEVICES` du sniffer
 - [x] `packet.to_dict()` sérialisable en JSON (noms d'enum sans exception pour les valeurs inconnues), `EEPId`,
       `packet.eep_id` et `packet.command`
-- [ ] Émission haut niveau vers les actionneurs : D2-01 (sortie d'un canal ou de tous avec `IO=0x1E`), D2-05 (aller à
-      une position, stop, demander la position), avec le base ID (ou base ID + décalage) comme émetteur
+- [x] Émission haut niveau : `SwitchActuator` (D2-01) et `BlindActuator` (D2-05), depuis le base ID ou un autre ID de
+      la clé
 - [ ] Teach-in : appairer la clé à un actionneur (requête et réponse UTE), au lieu de forger les octets à la main
 - [x] API publique déclarée : `from enocean import SerialCommunicator, RadioPacket, RORG`, `__all__`,
       `__version__` ; `RadioPacket.dbm` (`None` si non rapporté) remplace `dBm`, déprécié

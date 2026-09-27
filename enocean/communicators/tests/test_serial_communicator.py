@@ -331,3 +331,18 @@ def test_registry_decodes_received_packets(pty_port, running):
     packet = com.receive.get(timeout=TIMEOUT)
     assert packet.device.name == 'Office temperature'
     assert packet.parsed['TMP']['value'] == pytest.approx(26.67, abs=0.01)
+
+
+def test_actuator_command_is_written_to_serial(pty_port, running):
+    from enocean.actuators import SwitchActuator
+
+    module, port = pty_port
+    com = SerialCommunicator(port=port)
+    com.base_id = [0xFF, 0xC3, 0x6F, 0x80]
+    running(com)
+
+    SwitchActuator(com, '05:99:77:AF').turn_on(channel=1)
+
+    written = module.read_packet()
+    assert written.data == [0xD2, 0x01, 0x01, 0x64, 0xFF, 0xC3, 0x6F, 0x80, 0x00]
+    assert written.optional[1:5] == [0x05, 0x99, 0x77, 0xAF]

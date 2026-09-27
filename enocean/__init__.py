@@ -10,6 +10,7 @@ from importlib.metadata import PackageNotFoundError, version
 # Libraries must not emit logs unless the application configures logging
 logging.getLogger(__name__).addHandler(logging.NullHandler())
 
+from enocean.actuators import BlindActuator, SwitchActuator  # noqa: E402
 from enocean.communicators import Communicator, SerialCommunicator, TCPCommunicator  # noqa: E402
 from enocean.devices import Device, DeviceRegistry  # noqa: E402
 from enocean.protocol.constants import EVENT_CODE, PACKET, PARSE_RESULT, RETURN_CODE, RORG  # noqa: E402
@@ -30,6 +31,7 @@ except PackageNotFoundError:  # pragma: no cover - running from a source tree wi
 
 __all__ = [
     'EEP',
+    'BlindActuator',
     'EEPId',
     'EVENT_CODE',
     'PACKET',
@@ -51,6 +53,7 @@ __all__ = [
     'SenderStats',
     'SerialCommunicator',
     'StatsSnapshot',
+    'SwitchActuator',
     'TCPCommunicator',
     'UTETeachInPacket',
     '__version__',

@@ -30,6 +30,8 @@ Towards 2.0.0: fixes and removal of deprecated APIs, before reworking the public
 - `packet.to_dict()`: JSON-serializable view of a packet (hex IDs, enum names that don't raise on unknown values,
   ISO reception time, EEP and decoded values).
 - `EEPId` (`EEPId.parse('D2-01-12')`), `packet.eep_id` and `packet.command`: the profile and command variant applied.
+- `SwitchActuator` (D2-01: `set_output`, `turn_on`, `turn_off`, `query_status`) and `BlindActuator` (D2-05: `go_to`,
+  `stop`, `query_position`) in `enocean.actuators`, sending from the module's base ID.
 - `DeviceRegistry` / `Device` (`enocean.devices`): known devices and their profiles, default profiles per RORG and
   ignored devices. Communicators given `devices=` deliver packets decoded with their device's profile (`packet.device`,
   `packet.parsed`) and drop ignored devices (`packets_ignored` statistic and metric).
