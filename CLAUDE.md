@@ -6,7 +6,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 A Python library implementing the EnOcean serial protocol (ESP3) for reading and controlling EnOcean
 radio devices (switches, sensors, etc.) over serial or TCP. Device behavior/data layout is driven by
-EnOcean Equipment Profiles (EEP), defined in `enocean/protocol/EEP.xml` and parsed with BeautifulSoup.
+EnOcean Equipment Profiles (EEP), defined in `enocean/protocol/EEP.xml` and parsed with the stdlib `xml.etree.ElementTree`.
 
 ## Commands
 
@@ -71,8 +71,9 @@ There's no build step; it's a pure-Python package (`uv build` produces sdist/whe
   (sender, status) are fixed-offset-from-the-end.
 
 ### EEP layer (`enocean/protocol/eep.py`)
-`EEP` loads and indexes `EEP.xml` on construction into `self.telegrams[rorg][func][type]` (a
-BeautifulSoup node). `find_profile()` looks up a profile by RORG/FUNC/TYPE (and optional
+`EEP` loads and indexes `EEP.xml` on construction into `self.telegrams[rorg][func][type]` (an
+`ElementTree.Element`; the root is `EEP.xml_root`). Elements without children are falsy, so compare
+lookups with `is None`, never `if not element`. `find_profile()` looks up a profile by RORG/FUNC/TYPE (and optional
 `direction`/`command`, since some profiles have direction-specific or multi-command data layouts).
 `get_values()`/`set_values()` walk a profile's `<value>`, `<enum>`, and `<status>` child tags to
 decode/encode bit-packed fields — `<value>` does linear range→scale interpolation, `<enum>` maps raw
