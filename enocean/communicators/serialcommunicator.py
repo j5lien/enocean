@@ -13,8 +13,13 @@ class SerialCommunicator(Communicator):
 
     logger = logging.getLogger('enocean.communicators.SerialCommunicator')
 
-    def __init__(self, port: str = '/dev/ttyAMA0', callback: Callable[[Packet], None] | None = None) -> None:
-        super().__init__(callback)
+    def __init__(self, port: str, callback: Callable[[Packet], None] | None = None, teach_in: bool = True) -> None:
+        """
+        port: serial port of the module, e.g. /dev/ttyUSB0 or /dev/serial/by-id/usb-EnOcean_GmbH_EnOcean_USB_300_...
+        (Linux), /dev/cu.usbserial-... (macOS). callback: called with each received packet instead of queueing it in
+        `receive`. teach_in: answer UTE teach-in requests automatically.
+        """
+        super().__init__(callback, teach_in)
         # Initialize serial port
         self.__ser = serial.Serial(port, 57600, timeout=0.1)
         self._transport_ready = True

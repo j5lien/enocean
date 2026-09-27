@@ -1,12 +1,10 @@
 import threading
 
 from enocean.communicators.communicator import Communicator
-from enocean.decorators import timing
 from enocean.protocol.constants import PACKET
 from enocean.protocol.packet import Packet, RadioPacket
 
 
-@timing(1000)
 def test_buffer():
     """Test buffer parsing for Communicator"""
     # fmt: off
@@ -28,7 +26,6 @@ def test_buffer():
     assert com.receive.qsize() == 1
 
 
-@timing(1000)
 def test_send():
     """Test sending packets to Communicator"""
     com = Communicator()

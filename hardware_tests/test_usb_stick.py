@@ -83,7 +83,7 @@ def test_wall_switch_toggles_light(radio: Radio, config: dict[str, str], say) ->
             )
 
         status = radio.wait_for(is_light_status, timeout=5)
-        status.parse_eep(0x01, 0x12, command=4)
+        status.parse_eep(0x01, 0x12)  # the command (4, status response) is detected from the telegram
         say('Light %s channel %d: %s (%d dBm)' % (light, channel, status.parsed['OV']['value'], status.dBm))
         outputs.append(status.parsed['OV']['raw_value'])
 

@@ -1,4 +1,3 @@
-import datetime
 import logging
 import queue
 import threading
@@ -93,7 +92,6 @@ class Communicator(threading.Thread):
 
             # If message is OK, add it to receive queue or send to the callback method
             if status == PARSE_RESULT.OK and packet:
-                packet.received = datetime.datetime.now()
                 self.stats.record_received(packet)
 
                 if self._base_id_requested and self._is_base_id_response(packet):
@@ -196,5 +194,5 @@ class Communicator(threading.Thread):
 
     @base_id.setter
     def base_id(self, base_id: list[int] | None) -> None:
-        """Sets the Base ID manually, only for testing purposes."""
+        """Sets the Base ID without asking the module, e.g. when it is already known."""
         self._base_id = base_id

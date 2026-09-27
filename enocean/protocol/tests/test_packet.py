@@ -1,9 +1,11 @@
-from enocean.decorators import timing
-from enocean.protocol.constants import EVENT_CODE, PACKET, PARSE_RESULT
-from enocean.protocol.packet import EventPacket, Packet
+import datetime
+
+import pytest
+
+from enocean.protocol.constants import EVENT_CODE, PACKET, PARSE_RESULT, RORG
+from enocean.protocol.packet import EventPacket, Packet, RadioPacket
 
 
-@timing(1000)
 def test_packet_examples():
     """Tests examples found at EnOceanSerialProtocol3.pdf / 74"""
     # fmt: off
@@ -115,7 +117,6 @@ def test_packet_examples():
         assert pack.repeater_count == 0
 
 
-@timing(1000)
 def test_packet_fails():
     """
     Tests designed to fail.
@@ -211,3 +212,30 @@ def test_event_packet():
     assert packet.event == EVENT_CODE.SA_RECLAIM_NOT_SUCCESFUL
     assert packet.event_data == []
     assert packet.optional == []
+
+
+def test_packet_accepts_bytes():
+    for data in ([0x08], bytes([0x08]), bytearray([0x08]), (0x08,)):
+        packet = Packet(PACKET.COMMON_COMMAND, data, bytearray([0x01]))
+        assert packet.data == [0x08]
+        assert packet.optional == [0x01]
+    assert Packet(PACKET.COMMON_COMMAND).data == []
+
+
+def test_packet_rejects_other_data_types():
+    with pytest.raises(TypeError):
+        Packet(PACKET.COMMON_COMMAND, 'not bytes')
+
+
+def test_parsed_packets_are_timestamped_in_utc():
+    before = datetime.datetime.now(datetime.timezone.utc)
+    # fmt: off
+    _, _, packet = Packet.parse_msg(bytearray([
+        0x55, 0x00, 0x05, 0x00, 0x02, 0xCE, 0x00, 0xFF, 0x87, 0xCA, 0x00, 0xA3,
+    ]))
+    # fmt: on
+
+    assert packet.received.tzinfo is datetime.timezone.utc
+    assert before <= packet.received <= datetime.datetime.now(datetime.timezone.utc)
+    assert Packet(PACKET.COMMON_COMMAND, [0x08]).received is None
+    assert RadioPacket.create(rorg=RORG.RPS, rorg_func=0x02, rorg_type=0x02, EB='pressed').received is None

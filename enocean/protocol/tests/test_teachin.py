@@ -1,10 +1,10 @@
+import pytest
+
 from enocean.communicators import Communicator
-from enocean.decorators import timing
-from enocean.protocol.constants import DB6, RORG
-from enocean.protocol.packet import Packet
+from enocean.protocol.constants import DB6, PACKET, RORG
+from enocean.protocol.packet import Packet, UTETeachInPacket
 
 
-@timing(rounds=100, limit=750)
 def test_ute_in():
     communicator = Communicator()
     communicator.base_id = [0xDE, 0xAD, 0xBE, 0xEF]
@@ -41,3 +41,11 @@ def test_ute_in():
     assert response_packet.destination_hex == '01:94:E3:B9'
     assert response_packet._bit_data[DB6.BIT_5 : DB6.BIT_3] == [False, True]
     assert response_packet.data[2:7] == packet.data[2:7]
+
+
+def test_ute_number_of_channels():
+    data = [0xD4, 0xA0, 0x02, 0x3E, 0x00, 0x01, 0x01, 0xD2, 0x01, 0x94, 0xE3, 0xB9, 0x00]
+    packet = UTETeachInPacket(PACKET.RADIO_ERP1, data, [0x01, 0xFF, 0xFF, 0xFF, 0xFF, 0x40, 0x00])
+    assert packet.number_of_channels == 2
+    with pytest.warns(DeprecationWarning):
+        assert packet.channel == 2

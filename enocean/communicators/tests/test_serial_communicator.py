@@ -305,3 +305,15 @@ def test_prometheus_metrics_of_a_running_communicator(pty_port, running):
     assert value('enocean_base_id_known') == 1
     assert 0 <= value('enocean_base_id_fetch_seconds') < 1
     assert wait_until(lambda: value('enocean_packets_sent_total', {'packet_type': 'common_command', 'rorg': ''}) == 2)
+
+
+def test_teach_in_can_be_disabled_at_construction(pty_port, running):
+    module, port = pty_port
+    com = SerialCommunicator(port=port, teach_in=False)
+    com.base_id = [0xDE, 0xAD, 0xBE, 0xEF]
+    running(com)
+
+    module.write(UTE_TEACH_IN_FRAME)
+
+    assert isinstance(com.receive.get(timeout=TIMEOUT), UTETeachInPacket)
+    module.assert_silent()
