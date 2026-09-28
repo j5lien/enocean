@@ -14,7 +14,7 @@ actuators…) through an EnOcean USB/serial module (e.g. USB 300) or a TCP bridg
 It requires Python 3.10 or later, and has one dependency: `pyserial`.
 
 ```bash
-pip install git+https://github.com/j5lien/enocean.git@1.0.0
+pip install git+https://github.com/j5lien/enocean.git@2.0.0
 ```
 
 ```python

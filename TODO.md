@@ -82,7 +82,7 @@ aujourd'hui) ; on **s'aligne sur les noms officiels** des champs (version 2.0).
       règles ruff `D` en CI
 - [x] Site de documentation (mkdocs-material + mkdocstrings, GitHub Pages) : concepts, guides, référence d'API
       générée, exemples exécutés par les tests, construction stricte en CI
-- [ ] Activer GitHub Pages (Settings → Pages → Source : GitHub Actions) pour publier le site
+- [x] GitHub Pages activé : https://j5lien.github.io/enocean/
 - [ ] MkDocs 2.0 annoncé incompatible avec les plugins (mkdocstrings, material) : épinglé `<2`, surveiller les
       annonces de l'équipe Material for MkDocs
 - [x] Guide de migration 0.60 → 1.x → 2.0 (`docs/migration.md`)
@@ -101,7 +101,7 @@ aujourd'hui) ; on **s'aligne sur les noms officiels** des champs (version 2.0).
 ## Dépôt GitHub
 
 - [ ] `gh auth login -h github.com` pour pouvoir créer les PR et suivre la CI depuis le terminal
-- [ ] Activer les alertes Dependabot et CodeQL (Settings → Code security)
+- [x] Alertes Dependabot et CodeQL activées
 - [ ] Publication PyPI : pas pour l'instant (le nom `enocean` appartient au projet d'origine)
 
 ## Fait
@@ -140,3 +140,4 @@ aujourd'hui) ; on **s'aligne sur les noms officiels** des champs (version 2.0).
 - [x] Métriques par émetteur (paquets, dernier vu, dBm) en option et bornées (`per_sender=True`, `max_senders`)
 - [x] Tests matériels sur une vraie clé (`make test-hardware`, config `.env`, test interactif interrupteur → lumière)
       et trames réelles en tests CI (PTM 210 F6-02-02, SIN-2-2-01 D2-01-12)
+- [x] Release 2.0.0 : profils officiels, API d'intégration, supervision, documentation

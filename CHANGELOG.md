@@ -3,9 +3,11 @@
 All notable changes to this project are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and versions follow [Semantic Versioning](https://semver.org/).
 
-## [Unreleased]
+## [2.0.0] - 2026-09-28
 
-Towards 2.0.0: fixes and removal of deprecated APIs, before reworking the public API.
+The 270 profiles of the official EnOcean Alliance specification, an integration API (device registry, packet
+serialization, actuator commands, teach-in), monitoring (statistics, health, Prometheus, structured logs) and a
+documentation site. Upgrading from 1.0: see the [migration guide](https://j5lien.github.io/enocean/migration/).
 
 ### Breaking changes
 
@@ -128,6 +130,6 @@ First release of the [j5lien/enocean](https://github.com/j5lien/enocean) fork of
 
 Last release of [kipe/enocean](https://github.com/kipe/enocean).
 
-[Unreleased]: https://github.com/j5lien/enocean/compare/1.0.0...HEAD
+[2.0.0]: https://github.com/j5lien/enocean/compare/1.0.0...2.0.0
 [1.0.0]: https://github.com/j5lien/enocean/compare/0.60.1...1.0.0
 [0.60.1]: https://github.com/j5lien/enocean/releases/tag/0.60.1

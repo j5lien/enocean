@@ -3,11 +3,11 @@
 ## Installation
 
 ```bash
-pip install git+https://github.com/j5lien/enocean.git@1.0.0
+pip install git+https://github.com/j5lien/enocean.git@2.0.0
 # or, in a uv-managed project
-uv add git+https://github.com/j5lien/enocean.git --tag 1.0.0
+uv add git+https://github.com/j5lien/enocean.git --tag 2.0.0
 # with Prometheus metrics
-pip install "enocean[prometheus] @ git+https://github.com/j5lien/enocean.git@1.0.0"
+pip install "enocean[prometheus] @ git+https://github.com/j5lien/enocean.git@2.0.0"
 ```
 
 ## Finding the module's serial port
