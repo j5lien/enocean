@@ -167,7 +167,7 @@ class EEP:
             self.__load_index()
         except (OSError, ElementTree.ParseError):
             # The profiles ship with the library: this only happens with a broken installation
-            self.logger.warning('Cannot load protocol file!')
+            self.logger.warning('Cannot load protocol file!', extra={'event': 'profiles_not_loaded'})
             self.init_ok = False
 
     def __load_index(self) -> None:
@@ -402,20 +402,25 @@ class EEP:
             The variant, None if the profile is unknown.
         """
         if not self.init_ok:
-            self.logger.warning('EEP profiles not loaded!')
+            self.logger.warning('EEP profiles not loaded!', extra={'event': 'profiles_not_loaded'})
             return None
 
+        log_fields = {'event': 'unknown_profile', 'eep': str(EEPId(eep_rorg, rorg_func, rorg_type)), 'command': command}
         if eep_rorg not in self.telegrams:
-            self.logger.warning('Cannot find rorg %s in EEP!', hex(eep_rorg))
+            self.logger.warning('Cannot find rorg %s in EEP!', hex(eep_rorg), extra=log_fields)
             return None
 
         if rorg_func not in self.telegrams[eep_rorg]:
-            self.logger.warning('Cannot find rorg %s func %s in EEP!', hex(eep_rorg), hex(rorg_func))
+            self.logger.warning('Cannot find rorg %s func %s in EEP!', hex(eep_rorg), hex(rorg_func), extra=log_fields)
             return None
 
         if rorg_type not in self.telegrams[eep_rorg][rorg_func]:
             self.logger.warning(
-                'Cannot find rorg %s func %s type %s in EEP!', hex(eep_rorg), hex(rorg_func), hex(rorg_type)
+                'Cannot find rorg %s func %s type %s in EEP!',
+                hex(eep_rorg),
+                hex(rorg_func),
+                hex(rorg_type),
+                extra=log_fields,
             )
             return None
 
@@ -522,7 +527,11 @@ class EEP:
             target = next((tag for tag in profile.iter() if tag.get('shortcut') == shortcut), None)
             if target is None:
                 # TODO: Should we raise an error?
-                self.logger.warning('Cannot find data description for shortcut %s', shortcut)
+                self.logger.warning(
+                    'Cannot find data description for shortcut %s',
+                    shortcut,
+                    extra={'event': 'unknown_field', 'shortcut': shortcut},
+                )
                 continue
 
             # update bit_data

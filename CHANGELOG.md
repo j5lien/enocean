@@ -3,6 +3,30 @@
 All notable changes to this project are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and versions follow [Semantic Versioning](https://semver.org/).
 
+## [2.1.0] - 2026-09-29
+
+Structured logs: every record names its kind in an `event` field and carries its context, so logs can be filtered and
+aggregated without parsing messages (e.g. `event:serial_error` in VictoriaLogs). The events and their fields are listed
+in the [monitoring guide](https://j5lien.github.io/enocean/guides/monitoring/#logs).
+
+### Added
+
+- `event` field on the library's log records: `packet_received`, `packet_sent`, `teach_in`, `base_id_received`,
+  `base_id_timeout`, `communicator_started`/`stopped`, `client_connected`/`disconnected`, `serial_error`,
+  `processing_error`, `header_crc_error`, `data_crc_error`, `malformed_packet`, `unknown_profile`, `unknown_field`...
+- Their context as fields: `base_id`; `transport`, `port`, `host` and `client` for the transports; `error` for serial
+  port errors (also in the message, it was lost); `length` of a corrupted packet; `data` and `optional` (hex) of a
+  malformed one, to replay it; `eep` and `command` of an unknown profile; `shortcut` of an unknown field; `outcome` of
+  a teach-in.
+- Packet records also carry `destination`, `status`, `repeater_count` and `eep`.
+- `SerialCommunicator.port`, the serial port it was opened on.
+
+### Changed
+
+- The `packet_type` and `rorg` fields of log records are enum names (`RADIO_ERP1`, `VLD`) instead of integers, as in
+  `packet.to_dict()`: log queries on their numeric values need updating.
+- The communicators' started/stopped messages name the port, and the TCP client messages the client's address.
+
 ## [2.0.2] - 2026-09-29
 
 ### Fixed
@@ -148,6 +172,7 @@ First release of the [j5lien/enocean](https://github.com/j5lien/enocean) fork of
 
 Last release of [kipe/enocean](https://github.com/kipe/enocean).
 
+[2.1.0]: https://github.com/j5lien/enocean/compare/2.0.2...2.1.0
 [2.0.2]: https://github.com/j5lien/enocean/compare/2.0.1...2.0.2
 [2.0.1]: https://github.com/j5lien/enocean/compare/2.0.0...2.0.1
 [2.0.0]: https://github.com/j5lien/enocean/compare/1.0.0...2.0.0

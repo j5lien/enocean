@@ -3,6 +3,7 @@ End-to-end tests for TCPCommunicator: the real communicator thread listens on a 
 clients push ESP3 frames to it over real sockets, as examples/serial_to_tcp.py does.
 """
 
+import logging
 import queue
 import socket
 import time
@@ -27,16 +28,21 @@ def connect(port):
             time.sleep(0.02)
 
 
-def test_frame_from_client_is_received(free_tcp_port, running):
+def test_frame_from_client_is_received(free_tcp_port, running, caplog):
+    caplog.set_level(logging.DEBUG, logger='enocean')
     com = running(TCPCommunicator(host='127.0.0.1', port=free_tcp_port))
 
     client = connect(free_tcp_port)
+    client_address = '%s:%s' % client.getsockname()
     client.sendall(RADIO_FRAME)
     client.close()
 
     packet = com.receive.get(timeout=TIMEOUT)
     assert isinstance(packet, RadioPacket)
     assert packet.sender_hex == '01:81:B7:44'
+    events = {getattr(r, 'event', None): r for r in caplog.records}
+    assert (events['communicator_started'].transport, events['communicator_started'].port) == ('tcp', free_tcp_port)
+    assert events['client_connected'].client == client_address
 
 
 def test_multiple_frames_in_one_connection(free_tcp_port, running):

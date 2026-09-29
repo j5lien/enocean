@@ -175,7 +175,7 @@ class Packet:
         # would otherwise make us wait for, and then drop, bytes belonging to the following valid packets.
         if buf[5] != crc8.calc(buf[1:5]):
             # Expected on a noisy line: every stray 0x55 lands here while resynchronizing
-            Packet.logger.debug('Header CRC error, resynchronizing.')
+            Packet.logger.debug('Header CRC error, resynchronizing.', extra={'event': 'header_crc_error'})
             if on_error:
                 on_error(HEADER_CRC_ERROR)
             # Skip only the sync byte and resynchronize on the next 0x55
@@ -200,7 +200,7 @@ class Packet:
                 'Data CRC error on a %d byte packet (type 0x%02X), dropping it.',
                 msg_len,
                 packet_type,
-                extra={'packet_type': packet_type},
+                extra={'event': 'data_crc_error', 'packet_type': enum_name(PACKET, packet_type), 'length': msg_len},
             )
             if on_error:
                 on_error(DATA_CRC_ERROR)
@@ -222,7 +222,17 @@ class Packet:
             packet = packet_class(packet_type, data, opt_data)
         except (IndexError, ValueError):
             # Valid on the wire, but too short for what its type requires: keep the raw bytes
-            Packet.logger.warning('Malformed %s packet, returning it unparsed.', packet_class.__name__, exc_info=True)
+            Packet.logger.warning(
+                'Malformed %s packet, returning it unparsed.',
+                packet_class.__name__,
+                exc_info=True,
+                extra={
+                    'event': 'malformed_packet',
+                    'packet_type': enum_name(PACKET, packet_type),
+                    'data': enocean.utils.to_hex_string(data),
+                    'optional': enocean.utils.to_hex_string(opt_data),
+                },
+            )
             packet = Packet(packet_type, data, opt_data)
             if on_error:
                 on_error(MALFORMED_PACKET)

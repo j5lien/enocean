@@ -42,7 +42,9 @@ class TCPCommunicator(Communicator):
 
     def run(self) -> None:
         """Thread body: accept clients and parse the bytes they send until stopped."""
-        self.logger.info('TCPCommunicator started')
+        self.logger.info(
+            'TCPCommunicator started on %s:%s', self.host, self.port, extra=self._log_fields('communicator_started')
+        )
         sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         sock.bind((self.host, self.port))
         sock.listen(5)
@@ -54,7 +56,12 @@ class TCPCommunicator(Communicator):
                 (client, addr) = sock.accept()
             except TimeoutError:
                 continue
-            self.logger.debug('Client "%s" connected', addr)
+            client_address = '%s:%s' % addr[:2]
+            self.logger.debug(
+                'Client "%s" connected',
+                client_address,
+                extra={**self._log_fields('client_connected'), 'client': client_address},
+            )
             client.settimeout(0.5)
             while not self._stop_flag.is_set():
                 try:
@@ -68,10 +75,21 @@ class TCPCommunicator(Communicator):
                     self.parse()
                 except Exception:
                     # Most likely raised by the user's callback: keep serving, but with the full traceback
-                    self.logger.exception('Error while processing received packets')
+                    self.logger.exception(
+                        'Error while processing received packets', extra={'event': 'processing_error'}
+                    )
                     self.stats.record_processing_error()
             client.close()
-            self.logger.debug('Client disconnected')
+            self.logger.debug(
+                'Client "%s" disconnected',
+                client_address,
+                extra={**self._log_fields('client_disconnected'), 'client': client_address},
+            )
         sock.close()
         self._transport_ready = False
-        self.logger.info('TCPCommunicator stopped')
+        self.logger.info(
+            'TCPCommunicator stopped on %s:%s', self.host, self.port, extra=self._log_fields('communicator_stopped')
+        )
+
+    def _log_fields(self, event: str) -> dict[str, object]:
+        return {'event': event, 'transport': 'tcp', 'host': self.host, 'port': self.port}

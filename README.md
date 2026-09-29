@@ -19,9 +19,9 @@ This is a maintained fork of [kipe/enocean](https://github.com/kipe/enocean), wh
 Requires Python 3.10 or later.
 
 ```bash
-pip install git+https://github.com/j5lien/enocean.git@2.0.2
+pip install git+https://github.com/j5lien/enocean.git@2.1.0
 # or, in a uv-managed project
-uv add git+https://github.com/j5lien/enocean.git --tag 2.0.2
+uv add git+https://github.com/j5lien/enocean.git --tag 2.1.0
 ```
 
 Wheels are also attached to each [GitHub release](https://github.com/j5lien/enocean/releases); see
@@ -132,8 +132,9 @@ More in [`examples/`](examples/). `TCPCommunicator` receives packets over TCP in
 ## Monitoring
 
 **Logs.** The library is silent until you configure logging. `enocean.consolelogger.init_logging()` sends its logs to
-stderr, or as one JSON object per line with `init_logging(json_format=True)`; packet-related records carry
-`packet_type`, `rorg`, `sender` and `dbm` fields.
+stderr, or as one JSON object per line with `init_logging(json_format=True)`; records carry an `event` field
+(`packet_received`, `teach_in`, `serial_error`...) and structured fields such as `sender`, `rorg`, `eep` or `dbm`, named
+as in `packet.to_dict()` (see the [monitoring guide](https://j5lien.github.io/enocean/guides/monitoring/#logs)).
 
 **Statistics and health**, always available, no dependency:
 

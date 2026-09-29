@@ -143,3 +143,4 @@ aujourd'hui) ; on **s'aligne sur les noms officiels** des champs (version 2.0).
 - [x] Release 2.0.0 : profils officiels, API d'intégration, supervision, documentation
 - [x] Release 2.0.1 : `status` et `repeater_count` des télégrammes VLD (lus dans le niveau de sécurité)
 - [x] Release 2.0.2 : `dbm` à `None` au lieu de -255 pour les télégrammes à envoyer
+- [x] Release 2.1.0 : logs structurés (champ `event` et contexte sur chaque log, champs de paquet alignés sur `to_dict()`)
