@@ -101,8 +101,10 @@ The `enocean` logger has a `NullHandler`: the library is silent unless the appli
 expected radio noise (header CRC errors while resynchronizing), INFO for lifecycle events (started/stopped, base ID,
 teach-in answered), WARNING for dropped or unusable data (data CRC error, malformed packet, unknown profile), ERROR
 for transport failures, `logger.exception` for errors raised while processing packets (e.g. in user callbacks). Pass
-lazy `%s` args, never pre-formatted strings, and `extra=packet_log_fields(packet)` on packet-related records so
-structured handlers get `packet_type`/`rorg`/`sender`/`dbm`.
+lazy `%s` args, never pre-formatted strings. Every record gets an `event` field (snake_case, e.g. `base_id_received`)
+plus its context as structured fields, through `extra=`; packet-related records use
+`extra=packet_log_fields(packet, event)`, whose names and formats match `Packet.to_dict()`. The events are listed in
+`docs/guides/monitoring.md`: update it with new ones.
 
 ## Documentation
 

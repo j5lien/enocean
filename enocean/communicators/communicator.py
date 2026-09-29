@@ -8,19 +8,35 @@ from collections.abc import Callable
 from typing import TypeGuard
 
 from enocean.devices import Device, DeviceRegistry
-from enocean.protocol.constants import PACKET, PARSE_RESULT, RETURN_CODE
-from enocean.protocol.packet import Packet, RadioPacket, ResponsePacket, UTETeachInPacket
+from enocean.protocol.constants import PACKET, PARSE_RESULT, RETURN_CODE, RORG
+from enocean.protocol.packet import Packet, RadioPacket, ResponsePacket, UTETeachInPacket, enum_name
 from enocean.stats import CommunicatorStats, Health
 from enocean.utils import to_hex_string
 
 
-def packet_log_fields(packet: Packet) -> dict[str, object]:
-    """Fields attached to log records about a packet, for structured log handlers."""
-    fields: dict[str, object] = {'packet_type': int(packet.packet_type)}
+def packet_log_fields(packet: Packet, event: str | None = None) -> dict[str, object]:
+    """Fields attached to log records about a packet, for structured log handlers.
+
+    The same names and formats as Packet.to_dict(): enum names, hex IDs.
+
+    Args:
+        packet: The packet the record is about.
+        event: The record's `event` field (e.g. 'packet_received'), to filter records by kind.
+    """
+    fields: dict[str, object] = {'packet_type': enum_name(PACKET, packet.packet_type)}
+    if event is not None:
+        fields['event'] = event
     if isinstance(packet, RadioPacket):
-        fields['rorg'] = int(packet.rorg)
-        fields['sender'] = packet.sender_hex
-        fields['dbm'] = packet.dbm
+        eep_id = packet.eep_id
+        fields.update(
+            rorg=enum_name(RORG, packet.rorg),
+            sender=packet.sender_hex,
+            destination=packet.destination_hex,
+            dbm=packet.dbm,
+            status=packet.status,
+            repeater_count=packet.repeater_count,
+            eep=str(eep_id) if eep_id else None,
+        )
     return fields
 
 
@@ -80,7 +96,7 @@ class Communicator(threading.Thread):
         """Get message from send queue, if one exists."""
         try:
             packet = self.transmit.get(block=False)
-            self.logger.debug('Sending %s', packet, extra=packet_log_fields(packet))
+            self.logger.debug('Sending %s', packet, extra=packet_log_fields(packet, 'packet_sent'))
             return packet
         except queue.Empty:
             pass
@@ -93,7 +109,7 @@ class Communicator(threading.Thread):
             False if packet isn't a Packet.
         """
         if not isinstance(packet, Packet):
-            self.logger.error('Object to send must be an instance of Packet')
+            self.logger.error('Object to send must be an instance of Packet', extra={'event': 'invalid_packet'})
             return False
         self.transmit.put(packet)
         return True
@@ -128,7 +144,10 @@ class Communicator(threading.Thread):
 
                 if self._base_id_requested and self._is_base_id_response(packet):
                     self._base_id = packet.response_data
-                    self.logger.info('Base ID of the module: %s', to_hex_string(self._base_id))
+                    base_id = to_hex_string(self._base_id)
+                    self.logger.info(
+                        'Base ID of the module: %s', base_id, extra={'event': 'base_id_received', 'base_id': base_id}
+                    )
                     self._base_id_requested = False
                     self.stats.record_base_id_received(time.monotonic() - self._base_id_requested_at)
                     self._base_id_received.set()
@@ -139,7 +158,7 @@ class Communicator(threading.Thread):
                     if self.base_id is not None:
                         self._answer_pending_teach_ins()
 
-                self.logger.debug('Received %s', packet, extra=packet_log_fields(packet))
+                self.logger.debug('Received %s', packet, extra=packet_log_fields(packet, 'packet_received'))
                 if self.__callback is None:
                     self.receive.put(packet)
                 else:
@@ -167,7 +186,7 @@ class Communicator(threading.Thread):
                 packet.sender_hex,
                 packet.eep_id,
                 outcome,
-                extra=packet_log_fields(packet),
+                extra={**packet_log_fields(packet, 'teach_in'), 'outcome': outcome},
             )
             self.send(packet.create_response_packet(self._base_id, response))
             self.stats.record_teach_in_response()
@@ -277,7 +296,9 @@ class Communicator(threading.Thread):
 
         self._request_base_id()
         if threading.current_thread() is not self and not self._base_id_received.wait(1):
-            self.logger.warning('No response from the module to the Base ID request.')
+            self.logger.warning(
+                'No response from the module to the Base ID request.', extra={'event': 'base_id_timeout'}
+            )
             self.stats.record_base_id_timeout()
             self._base_id_requested = False
         # Return the current Base ID (might be None).

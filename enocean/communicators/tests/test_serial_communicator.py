@@ -4,6 +4,7 @@ acting as the EnOcean module (see conftest.py), so the whole path from raw seria
 packets (and from send() to bytes on the wire) is exercised.
 """
 
+import logging
 import os
 import queue
 import threading
@@ -117,7 +118,8 @@ def test_sent_packet_is_written_to_serial(pty_port, running):
     assert snapshot.bytes_sent == len(packet.build())
 
 
-def test_base_id_is_fetched_from_module(pty_port, running):
+def test_base_id_is_fetched_from_module(pty_port, running, caplog):
+    caplog.set_level(logging.INFO, logger='enocean')
     module, port = pty_port
     com = running(SerialCommunicator(port=port))
     requests = []
@@ -137,9 +139,12 @@ def test_base_id_is_fetched_from_module(pty_port, running):
     assert requests[0].data == [0x08]  # CO_RD_IDBASE
     # The response is also left in the queue for the user
     assert com.receive.get(timeout=TIMEOUT).packet_type == PACKET.RESPONSE
+    [record] = [r for r in caplog.records if getattr(r, 'event', None) == 'base_id_received']
+    assert record.base_id == 'FF:87:CA:00'
 
 
-def test_ute_teach_in_is_answered_automatically(pty_port, running):
+def test_ute_teach_in_is_answered_automatically(pty_port, running, caplog):
+    caplog.set_level(logging.INFO, logger='enocean')
     module, port = pty_port
     com = SerialCommunicator(port=port)
     com.base_id = [0xDE, 0xAD, 0xBE, 0xEF]
@@ -152,6 +157,8 @@ def test_ute_teach_in_is_answered_automatically(pty_port, running):
     assert response.rorg == RORG.UTE
     assert response.sender_hex == 'DE:AD:BE:EF'
     assert response.destination_hex == '01:94:E3:B9'
+    [record] = [r for r in caplog.records if getattr(r, 'event', None) == 'teach_in']
+    assert (record.sender, record.rorg, record.eep, record.outcome) == ('01:94:E3:B9', 'UTE', 'D2-01-01', 'accepted')
 
 
 def test_ute_teach_in_is_ignored_when_disabled(pty_port, running):
@@ -177,7 +184,8 @@ def test_stop_ends_the_thread(pty_port, running):
     assert not com.is_alive()
 
 
-def test_device_disconnect_stops_communicator(pty_port, running):
+def test_device_disconnect_stops_communicator(pty_port, running, caplog):
+    caplog.set_level(logging.INFO, logger='enocean')
     module, port = pty_port
     com = running(SerialCommunicator(port=port))
     time.sleep(0.2)
@@ -188,6 +196,11 @@ def test_device_disconnect_stops_communicator(pty_port, running):
     com.join(TIMEOUT)
     assert not com.is_alive()
     assert com.stats.snapshot().transport_errors == 1
+    events = {getattr(r, 'event', None): r for r in caplog.records}
+    assert events['serial_error'].port == port
+    assert events['serial_error'].error
+    assert (events['communicator_started'].transport, events['communicator_started'].port) == ('serial', port)
+    assert events['communicator_stopped'].port == port
 
 
 def test_common_command_packet_roundtrip(pty_port, running):

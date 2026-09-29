@@ -39,13 +39,14 @@ class SerialCommunicator(Communicator):
             serial.SerialException: The port can't be opened.
         """
         super().__init__(callback, teach_in, devices)
+        self.port = port
         # Initialize serial port
         self.__ser = serial.Serial(port, 57600, timeout=0.1)
         self._transport_ready = True
 
     def run(self) -> None:
         """Thread body: write queued packets, read and parse bytes until stopped or the device disconnects."""
-        self.logger.info('SerialCommunicator started')
+        self.logger.info('SerialCommunicator started on %s', self.port, extra=self._log_fields('communicator_started'))
         while not self._stop_flag.is_set():
             # If there's messages in transmit queue
             # send them
@@ -56,8 +57,12 @@ class SerialCommunicator(Communicator):
                 data = bytearray(packet.build())
                 try:
                     self.__ser.write(data)
-                except serial.SerialException:
-                    self.logger.error('Serial port exception while writing! (device disconnected?)')
+                except serial.SerialException as error:
+                    self.logger.error(
+                        'Serial port exception while writing! (device disconnected?) %s',
+                        error,
+                        extra={**self._log_fields('serial_error'), 'error': str(error)},
+                    )
                     self.stats.record_transport_error()
                     self._transport_ready = False
                     self.stop()
@@ -67,8 +72,12 @@ class SerialCommunicator(Communicator):
             # Read chars from serial port as hex numbers
             try:
                 self._feed(self.__ser.read(16))
-            except serial.SerialException:
-                self.logger.error('Serial port exception! (device disconnected or multiple access on port?)')
+            except serial.SerialException as error:
+                self.logger.error(
+                    'Serial port exception! (device disconnected or multiple access on port?) %s',
+                    error,
+                    extra={**self._log_fields('serial_error'), 'error': str(error)},
+                )
                 self.stats.record_transport_error()
                 self._transport_ready = False
                 self.stop()
@@ -77,11 +86,14 @@ class SerialCommunicator(Communicator):
                 self.parse()
             except Exception:
                 # Most likely raised by the user's callback: keep running, but with the full traceback
-                self.logger.exception('Error while processing received packets')
+                self.logger.exception('Error while processing received packets', extra={'event': 'processing_error'})
                 self.stats.record_processing_error()
 
             time.sleep(0)
 
         self.__ser.close()
         self._transport_ready = False
-        self.logger.info('SerialCommunicator stopped')
+        self.logger.info('SerialCommunicator stopped on %s', self.port, extra=self._log_fields('communicator_stopped'))
+
+    def _log_fields(self, event: str) -> dict[str, object]:
+        return {'event': event, 'transport': 'serial', 'port': self.port}

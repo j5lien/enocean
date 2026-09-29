@@ -14,8 +14,32 @@ init_logging(level=logging.INFO, json_format=True)
 ```
 
 Levels: DEBUG for per-packet traffic and expected radio noise, INFO for lifecycle events (started, base ID, teach-in
-answered), WARNING for dropped data (corrupted telegram, unknown profile), ERROR for transport failures. Packet-related
-records carry `packet_type`, `rorg`, `sender` and `dbm` fields.
+answered), WARNING for dropped data (corrupted telegram, unknown profile), ERROR for transport failures.
+
+Records carry structured fields, emitted by the JSON format (and available on the `LogRecord` to any handler). Every
+record (but a few DEBUG traces) has an `event` field naming its kind, to filter on it:
+
+| `event` | Level | Other fields |
+| --- | --- | --- |
+| `packet_received`, `packet_sent` | DEBUG | the packet's fields (below) |
+| `teach_in` | INFO | the packet's fields, `outcome` (`accepted`, `deleted`, `profile not supported`) |
+| `base_id_received` | INFO | `base_id` (`FF:87:CA:00`) |
+| `base_id_timeout` | WARNING | |
+| `communicator_started`, `communicator_stopped` | INFO | `transport` (`serial`, `tcp`), `port`, `host` (TCP) |
+| `client_connected`, `client_disconnected` | DEBUG | `transport`, `host`, `port`, `client` (`192.168.1.10:51234`) |
+| `serial_error` | ERROR | `transport`, `port`, `error` |
+| `processing_error` | ERROR | the traceback (e.g. of an exception raised by the callback) |
+| `header_crc_error` | DEBUG | |
+| `data_crc_error` | WARNING | `packet_type`, `length` |
+| `malformed_packet` | WARNING | `packet_type`, `data`, `optional` (hex, to replay it) |
+| `unknown_profile` | WARNING | `eep` (`D2-01-12`), `command` |
+| `unknown_field` | WARNING | `shortcut` |
+| `invalid_packet` | ERROR | (`send()` was given something else than a packet) |
+| `profiles_not_loaded` | WARNING | (broken installation) |
+
+The packet's fields use the names and formats of `packet.to_dict()`: `packet_type` and `rorg` (enum names, e.g.
+`RADIO_ERP1`, `VLD`), and for radio telegrams `sender`, `destination`, `dbm` (None for telegrams to send), `status`,
+`repeater_count` and `eep` (once decoded, e.g. with a device registry).
 
 ## Statistics and health
 
