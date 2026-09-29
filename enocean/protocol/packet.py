@@ -400,14 +400,10 @@ class Packet:
 
     def parse(self) -> OrderedDict[str, FieldValue]:
         """Read the fields common to the packet type (e.g. sender, status); called on construction."""
-        # Parse status from messages
-        if self.rorg in [RORG.RPS, RORG.BS1, RORG.BS4]:
+        # Whatever the RORG, ERP1 data ends with the sender (4 bytes) and the status, whose low nibble is the repeater
+        # count (the optional data ends with the security level, not the status)
+        if self.packet_type == PACKET.RADIO_ERP1 and len(self.data) >= 6:
             self.status = self.data[-1]
-        if self.rorg == RORG.VLD and self.optional:
-            self.status = self.optional[-1]
-
-        if self.rorg in [RORG.RPS, RORG.BS1, RORG.BS4]:
-            # These message types should have repeater count in the last for bits of status.
             self.repeater_count = enocean.utils.from_bitarray(self._bit_status[4:])
         return self.parsed
 
