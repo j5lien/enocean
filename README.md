@@ -19,9 +19,9 @@ This is a maintained fork of [kipe/enocean](https://github.com/kipe/enocean), wh
 Requires Python 3.10 or later.
 
 ```bash
-pip install git+https://github.com/j5lien/enocean.git@2.0.1
+pip install git+https://github.com/j5lien/enocean.git@2.0.2
 # or, in a uv-managed project
-uv add git+https://github.com/j5lien/enocean.git --tag 2.0.1
+uv add git+https://github.com/j5lien/enocean.git --tag 2.0.2
 ```
 
 Wheels are also attached to each [GitHub release](https://github.com/j5lien/enocean/releases); see

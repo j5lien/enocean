@@ -247,3 +247,23 @@ def test_dbm_and_deprecated_dBm():  # noqa: N802
     with pytest.warns(DeprecationWarning):
         assert packet.dBm == -58
     assert RadioPacket(PACKET.RADIO_ERP1, [RORG.RPS, 0x10, 1, 2, 3, 4, 0x30], []).dbm is None
+    assert RadioPacket(PACKET.RADIO_ERP1, [RORG.RPS, 0x10, 1, 2, 3, 4, 0x30], [0x01, 0xFF, 0xFF]).dbm is None
+    assert str(packet).startswith('01:02:03:04->FF:FF:FF:FF (-58 dBm): ')
+
+
+def test_no_dbm_on_telegrams_to_send():
+    """Telegrams to send carry 0xFF in place of the signal strength (ESP3), not -255 dBm."""
+    packet = RadioPacket.create(
+        rorg=RORG.VLD,
+        rorg_func=0x01,
+        rorg_type=0x12,
+        command=1,
+        destination=[0x05, 0x99, 0x77, 0xAF],
+        sender=[0xFF, 0xF5, 0xB4, 0x80],
+        IO=1,
+        OV=100,
+    )
+    assert packet.optional[5] == 0xFF
+    assert packet.dbm is None
+    assert packet.to_dict()['dbm'] is None
+    assert str(packet).startswith('FF:F5:B4:80->05:99:77:AF: ')

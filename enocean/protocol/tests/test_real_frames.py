@@ -60,6 +60,7 @@ def test_d2_01_12_actuator_status(payload, output):
     packet, values = decode(radio_frame(RORG.VLD, payload, OFFICE_LIGHT, 0x00, -73), 0x01, 0x12, command=4)
 
     assert packet.sender_hex == '05:99:77:AF'
+    assert packet.dbm == -73
     assert packet.command == 4
     assert values['IO'] == 'Output channel (to load): 1'
     assert values['OV'] == output

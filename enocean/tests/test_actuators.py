@@ -26,6 +26,8 @@ def test_switch_turn_on_matches_a_real_controller(communicator):
     assert payload == [0x01, 0x01, 0x64]
     assert packet.sender_hex == 'FF:C3:6F:80'
     assert packet.optional[1:5] == [0x05, 0x99, 0x77, 0xAF]
+    assert packet.dbm is None
+    assert packet.to_dict()['dbm'] is None
 
 
 def test_switch_commands(communicator):

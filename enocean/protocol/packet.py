@@ -501,7 +501,8 @@ class RadioPacket(Packet):
     """A radio telegram (ERP1).
 
     Attributes set when parsing: `sender` / `destination` (4-byte IDs, also as `sender_hex` / `destination_hex`),
-    `dbm` (signal strength of the received telegram, None if the module didn't report it) and `learn`.
+    `dbm` (signal strength of the received telegram, None if the module didn't report it and for telegrams to send)
+    and `learn`.
 
     `learn` tells whether the telegram can be used to teach the device in. 1BS and 4BS telegrams carry a learn bit,
     UTE telegrams a teach-in request; RPS and VLD telegrams have no learn bit, so `learn` is always True for them:
@@ -518,6 +519,8 @@ class RadioPacket(Packet):
 
     def __str__(self) -> str:
         packet_str = super().__str__()
+        if self.dbm is None:
+            return '%s->%s: %s' % (self.sender_hex, self.destination_hex, packet_str)
         return '%s->%s (%s dBm): %s' % (self.sender_hex, self.destination_hex, self.dbm, packet_str)
 
     @property
@@ -588,7 +591,8 @@ class RadioPacket(Packet):
         # Optional data (sub-telegram count, destination, dBm, security level) may be omitted
         if len(self.optional) >= 6:
             self.destination = self.optional[1:5]
-            self.dbm = -self.optional[5]
+            # 0xFF is what telegrams to send carry (e.g. those built by create()): not a signal strength
+            self.dbm = None if self.optional[5] == 0xFF else -self.optional[5]
         self.sender = self.data[-5:-1]
         # RPS and VLD have no learn bit: any of their telegrams may be used for teach-in
         self.learn = True
