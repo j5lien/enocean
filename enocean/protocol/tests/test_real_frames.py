@@ -98,3 +98,28 @@ def test_d2_01_12_command_is_detected(payload, sender, expected):
 
     assert values.items() >= expected.items()
     assert values['OV'] == 'Output value 1% to 100% or ON: 100'
+
+
+@pytest.mark.parametrize(
+    ('data', 'status', 'repeater_count'),
+    [
+        ([0xD2, 0x01, 0x00, 0x64, 0xFF, 0xF5, 0xB4, 0x80, 0x81], 0x81, 1),
+        ([0xD2, 0xFF, 0x00, 0x00, 0x04, 0x05, 0x97, 0x72, 0x22, 0x02], 0x02, 2),
+        ([0xD2, 0x04, 0x60, 0xE4, 0x05, 0x97, 0xF5, 0x12, 0x00], 0x00, 0),
+        ([0xA5, 0x00, 0x31, 0x00, 0x0B, 0xFF, 0xC9, 0x16, 0x92, 0x81], 0x81, 1),
+        ([0xD4, 0xA0, 0xFF, 0x3E, 0x00, 0x01, 0x01, 0xD2, 0x01, 0x94, 0xE3, 0xB9, 0x81], 0x81, 1),
+    ],
+    ids=['vld-repeated-once', 'vld-repeated-twice', 'vld-direct', '4bs-repeated-once', 'ute-repeated-once'],
+)
+def test_status_and_repeater_count(data, status, repeater_count):
+    """The status is the last data byte whatever the RORG, not the security level ending the optional data."""
+    rorg, payload, sender = data[0], data[1:-5], data[-5:-1]
+    status_, remaining, packet = Packet.parse_msg(bytearray(radio_frame(rorg, payload, sender, data[-1], -70)))
+    assert status_ == PARSE_RESULT.OK and remaining == []
+
+    assert packet.data == data
+    assert packet.optional[-1] == 0x00
+    assert packet.status == status
+    assert packet.repeater_count == repeater_count
+    assert packet.to_dict()['status'] == status
+    assert packet.to_dict()['repeater_count'] == repeater_count

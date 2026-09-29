@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "enocean"
-version = "2.0.0"
+version = "2.0.1"
 description = "EnOcean serial protocol (ESP3) and equipment profiles (EEP) implementation"
 readme = "README.md"
 classifiers = [

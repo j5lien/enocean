@@ -3,6 +3,15 @@
 All notable changes to this project are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and versions follow [Semantic Versioning](https://semver.org/).
 
+## [2.0.1] - 2026-09-29
+
+### Fixed
+
+- `status` and `repeater_count` of VLD (D2) telegrams: the status was read from the last optional byte (the security
+  level, always 0) instead of the last data byte, so it was always 0. The status is now the last data byte and the
+  repeater count its low nibble for every radio telegram (RPS, 1BS, 4BS, VLD, MSC, UTE...). Decoding is unchanged:
+  no VLD profile has conditions on the status.
+
 ## [2.0.0] - 2026-09-28
 
 The 270 profiles of the official EnOcean Alliance specification, an integration API (device registry, packet
@@ -130,6 +139,7 @@ First release of the [j5lien/enocean](https://github.com/j5lien/enocean) fork of
 
 Last release of [kipe/enocean](https://github.com/kipe/enocean).
 
+[2.0.1]: https://github.com/j5lien/enocean/compare/2.0.0...2.0.1
 [2.0.0]: https://github.com/j5lien/enocean/compare/1.0.0...2.0.0
 [1.0.0]: https://github.com/j5lien/enocean/compare/0.60.1...1.0.0
 [0.60.1]: https://github.com/j5lien/enocean/releases/tag/0.60.1
