@@ -142,3 +142,4 @@ aujourd'hui) ; on **s'aligne sur les noms officiels** des champs (version 2.0).
       et trames réelles en tests CI (PTM 210 F6-02-02, SIN-2-2-01 D2-01-12)
 - [x] Release 2.0.0 : profils officiels, API d'intégration, supervision, documentation
 - [x] Release 2.0.1 : `status` et `repeater_count` des télégrammes VLD (lus dans le niveau de sécurité)
+- [x] Release 2.0.2 : `dbm` à `None` au lieu de -255 pour les télégrammes à envoyer
