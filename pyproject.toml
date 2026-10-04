@@ -1,5 +1,5 @@
 [build-system]
-requires = ["setuptools>=61"]
+requires = ["setuptools>=84.0.0"]
 build-backend = "setuptools.build_meta"
 
 [project]
@@ -39,7 +39,7 @@ Upstream = "https://github.com/kipe/enocean"
 
 [dependency-groups]
 dev = [
-    "hypothesis>=6.168.2",
+    "hypothesis>=6.168.3",
     "mypy>=2.3.1",
     "prometheus-client>=0.17",
     "pytest>=8",
